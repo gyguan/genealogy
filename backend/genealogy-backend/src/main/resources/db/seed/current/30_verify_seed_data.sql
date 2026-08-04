@@ -37,11 +37,36 @@ begin
     ) then raise exception 'Unreachable branch detected (cycle or invalid root topology)'; end if;
 
     if exists(select 1 from relationship r join person f on f.id=r.from_person_id join person t on t.id=r.to_person_id join verified_seed_clan c on c.id=r.clan_id where r.clan_id<>f.clan_id or r.clan_id<>t.clan_id) then raise exception 'Cross-clan relationship endpoint detected'; end if;
-    if exists(select 1 from relationship r join verified_seed_clan c on c.id=r.clan_id where r.from_person_id=r.to_person_id) then raise exception 'Self relationship detected'; end if;
+    if exists(select 1 from relationship r join verified_seed_clan c on c.id=r.clan_id where r.from_person_id=r.to_person_id and r.relation_type<>'no_descendant') then raise exception 'Illegal self relationship detected'; end if;
     if exists(
       select 1 from relationship r join verified_seed_clan c on c.id=r.clan_id
       where not((r.relation_type='parent_child' and r.relation_category='blood') or (r.relation_type='spouse' and r.relation_category='marriage') or (r.relation_type in('adoptive','successor','out_adoption','in_adoption','dual_successor','heir_son') and r.relation_category='ritual') or (r.relation_type='no_descendant' and r.relation_category='status'))
     ) then raise exception 'Relationship type/category mismatch detected'; end if;
+    if exists(
+      select 1 from relationship r join verified_seed_clan c on c.id=r.clan_id
+      where (r.relation_type='parent_child' and r.relation_label not in('biological_father','biological_mother','biological_parent'))
+         or (r.relation_type in('adoptive','in_adoption') and r.relation_label not in('legal_father','legal_mother','legal_parent'))
+         or (r.relation_type='successor' and r.relation_label<>'heir_successor')
+         or (r.relation_type='out_adoption' and r.relation_label<>'out_adopted')
+         or (r.relation_type='dual_successor' and r.relation_label<>'dual_successor')
+         or (r.relation_type='heir_son' and r.relation_label<>'heir_son')
+         or (r.relation_type='no_descendant' and r.relation_label<>'no_descendant')
+         or (r.relation_type='spouse' and r.relation_label not in('spouse','second_spouse','concubine'))
+    ) then raise exception 'Relationship label is not normalized to current application semantics'; end if;
+    if exists(
+      select 1 from relationship r join verified_seed_clan c on c.id=r.clan_id
+      where r.relation_type='spouse' and r.deleted_at is null and not exists(
+        select 1 from relationship reverse
+        where reverse.clan_id=r.clan_id and reverse.from_person_id=r.to_person_id
+          and reverse.to_person_id=r.from_person_id and reverse.relation_type='spouse'
+          and reverse.deleted_at is null
+      )
+    ) then raise exception 'Spouse reverse relationship is missing'; end if;
+    if not exists(
+      select 1 from relationship r join clan c on c.id=r.clan_id
+      where c.clan_code='SCENARIO-ZHANG-HUAIYANG' and r.relation_type='no_descendant'
+        and r.from_person_id=r.to_person_id
+    ) then raise exception 'No-descendant self-status scenario is missing'; end if;
 
     select string_agg(required_type,', ' order by required_type) into v_missing
     from(values('parent_child'),('spouse'),('adoptive'),('successor'),('out_adoption'),('in_adoption'),('dual_successor'),('heir_son'),('no_descendant'))req(required_type)
@@ -56,14 +81,73 @@ begin
     from(values('approved'),('pending'),('rejected'))req(required_status)
     where not exists(select 1 from revision r join clan c on c.id=r.clan_id where c.clan_code='SCENARIO-ZHANG-HUAIYANG' and r.status=req.required_status);
     if v_missing is not null then raise exception 'Missing revision statuses: %',v_missing; end if;
+    if exists(
+      select 1 from review_task t join revision r on r.id=t.revision_id
+      join verified_seed_clan c on c.id=t.clan_id
+      where t.clan_id<>r.clan_id or t.trace_id<>r.trace_id or t.status<>r.status
+    ) then raise exception 'Review task and revision lifecycle states are inconsistent'; end if;
+    if exists(
+      select 1 from revision r join verified_seed_clan c on c.id=r.clan_id
+      where (r.status='approved' and r.approved_at is null)
+         or (r.status='pending' and (r.approved_at is not null or r.rejected_reason is not null))
+         or (r.status='rejected' and (r.approved_at is not null or r.rejected_reason is null))
+    ) then raise exception 'Revision decision metadata is inconsistent'; end if;
+    if exists(
+      select 1 from revision r join person p on r.target_type='person' and p.id=r.target_id
+      join verified_seed_clan c on c.id=r.clan_id
+      where p.clan_id<>r.clan_id
+         or p.data_status is distinct from case r.status when 'approved' then 'official' when 'pending' then 'pending_review' when 'rejected' then 'rejected' end
+    ) then raise exception 'Person state does not match revision lifecycle'; end if;
+    if exists(
+      select 1 from revision r join relationship rel on r.target_type='relationship' and rel.id=r.target_id
+      join verified_seed_clan c on c.id=r.clan_id
+      where rel.clan_id<>r.clan_id
+         or rel.data_status is distinct from case r.status when 'approved' then 'official' when 'pending' then 'pending_review' when 'rejected' then 'rejected' end
+    ) then raise exception 'Relationship state does not match revision lifecycle'; end if;
+    if exists(
+      select 1 from revision r join source src on r.target_type='source' and src.id=r.target_id
+      join verified_seed_clan c on c.id=r.clan_id
+      where src.clan_id<>r.clan_id
+         or src.verification_status is distinct from case r.status when 'approved' then 'official' when 'pending' then 'pending_review' when 'rejected' then 'rejected' end
+    ) then raise exception 'Source state does not match revision lifecycle'; end if;
 
     if exists(select 1 from clan_membership m join person p on p.id=m.person_id join verified_seed_clan c on c.id=m.clan_id where m.clan_id<>p.clan_id) then raise exception 'Membership/person clan mismatch detected'; end if;
     if exists(
       select 1 from member_role mr join clan_membership m on m.id=mr.membership_id join verified_seed_clan c on c.id=m.clan_id
-      left join branch b on mr.scope_type='branch' and b.id=mr.scope_id
+      left join branch b on mr.scope_type in('branch','branch_subtree') and b.id=mr.scope_id
       left join person p on mr.scope_type='self' and p.id=mr.scope_id
-      where (mr.scope_type='clan' and mr.scope_id<>m.clan_id) or (mr.scope_type='branch' and(b.id is null or b.clan_id<>m.clan_id)) or (mr.scope_type='self' and(p.id is null or p.clan_id<>m.clan_id))
+      where (mr.scope_type='clan' and mr.scope_id<>m.clan_id)
+         or (mr.scope_type in('branch','branch_subtree') and(b.id is null or b.clan_id<>m.clan_id))
+         or (mr.scope_type='self' and(p.id is null or p.clan_id<>m.clan_id))
     ) then raise exception 'Member role scope points outside membership clan'; end if;
+    if exists(
+      select 1 from member_role mr join clan_membership m on m.id=mr.membership_id
+      join app_role role on role.id=mr.role_id join verified_seed_clan c on c.id=m.clan_id
+      where mr.status='active' and (
+        (role.role_code in('clan_admin','reviewer') and (mr.scope_type<>'clan' or mr.scope_id<>m.clan_id))
+        or (role.role_code='branch_admin' and mr.scope_type<>'branch_subtree')
+        or (role.role_code in('editor','viewer') and mr.scope_type not in('clan','branch_subtree'))
+      )
+    ) then raise exception 'Member role scope does not match current grant policy'; end if;
+    if exists(
+      select 1 from branch target join verified_seed_clan c on c.id=target.clan_id
+      left join member_role manager on manager.id=target.manager_member_id
+      left join clan_membership membership on membership.id=manager.membership_id
+      left join app_role role on role.id=manager.role_id
+      left join branch scope_branch on manager.scope_type in('branch','branch_subtree') and scope_branch.id=manager.scope_id
+      where target.manager_member_id is not null and (
+            manager.id is null or manager.status<>'active' or membership.id is null or role.id is null
+         or membership.clan_id<>target.clan_id
+         or role.role_code not in('clan_admin','branch_admin','editor')
+         or (manager.scope_type='clan' and manager.scope_id<>target.clan_id)
+         or (manager.scope_type='branch' and manager.scope_id<>target.id)
+         or (manager.scope_type='branch_subtree' and (
+              scope_branch.id is null or scope_branch.clan_id<>target.clan_id
+              or not(target.branch_path=scope_branch.branch_path or target.branch_path like scope_branch.branch_path||'/%')
+            ))
+         or manager.scope_type not in('global','clan','branch','branch_subtree')
+      )
+    ) then raise exception 'Branch manager grant does not cover the managed branch'; end if;
 
     if not exists(select 1 from person p join clan c on c.id=p.clan_id where c.clan_code='SCENARIO-ZHANG-HUAIYANG' and p.name='张俊杰' group by p.name having count(*)>=3) then raise exception 'Same-name-different-person scenario is missing'; end if;
     if not exists(select 1 from person p join clan c on c.id=p.clan_id where c.clan_code='SCENARIO-ZHANG-HUAIYANG' and p.is_living=true and p.privacy_level='private') then raise exception 'Living private-person scenario is missing'; end if;
@@ -89,10 +173,18 @@ begin
       join person child on child.id=r.to_person_id
       join verified_seed_clan c on c.id=r.clan_id
       where r.relation_type='parent_child'
-        and parent.person_code like 'PERF-%' and child.person_code like 'PERF-%'
         and parent.generation_no is not null and child.generation_no is not null
         and child.generation_no<>parent.generation_no+1
     ) then raise exception 'Parent-child generation numbers are inconsistent'; end if;
+    if exists(
+      select 1 from relationship r
+      join person ancestor on ancestor.id=r.from_person_id
+      join person descendant on descendant.id=r.to_person_id
+      join verified_seed_clan c on c.id=r.clan_id
+      where r.relation_type in('adoptive','successor','in_adoption','dual_successor','heir_son')
+        and ancestor.generation_no is not null and descendant.generation_no is not null
+        and ancestor.generation_no>=descendant.generation_no
+    ) then raise exception 'Lineage relationship generation order conflicts with application rules'; end if;
 
     if exists(
       select 1 from import_job j join clan c on c.id=j.clan_id

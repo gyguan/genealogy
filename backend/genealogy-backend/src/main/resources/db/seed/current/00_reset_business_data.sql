@@ -120,13 +120,22 @@ begin
     execute 'truncate table ' || v_table_list || ' restart identity cascade';
 end $$;
 
--- Authentication/reference data is intentionally preserved. Remove only stale
--- sessions owned by the deterministic seed accounts because the scenario seed
--- recreates them.
+-- Authentication/reference data is intentionally preserved. Remove only
+-- ephemeral authentication state that can make deterministic seed accounts
+-- unusable after a reset. Immutable app_auth_security_event evidence is retained.
 delete from app_auth_session s
 using app_user u
 where s.user_id = u.id
   and (u.username like 'demo\_%' escape '\' or u.username like 'seed\_%' escape '\');
+
+delete from app_password_reset_token t
+using app_user u
+where t.user_id = u.id
+  and (u.username like 'demo\_%' escape '\' or u.username like 'seed\_%' escape '\');
+
+-- Login-attempt rows are transient throttle counters. Clear the table so stale
+-- account or IP failures cannot block the deterministic local/test accounts.
+delete from app_login_attempt;
 
 do $$
 declare

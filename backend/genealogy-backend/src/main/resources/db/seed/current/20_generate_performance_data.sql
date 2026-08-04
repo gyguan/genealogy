@@ -172,7 +172,9 @@ select p.id,c.clan_id,b.id,format('PERF-%s-%09s',c.dataset_code,p.external_id),
        case when p.external_id%101=0 then format('别名-%s',p.external_id) end,
        case when p.external_id%2=0 then 'male' else 'female' end,p.generation_no,
        substr('承启俊泽仁义礼智信忠孝',((p.generation_no-1)%12)+1,1),
-       format('排行-%s',((p.external_id-1)%c.children_per_parent)+1),
+       case when p.parent_external_id is null then null
+            when p.external_id%2=0 then format('第%s子',((p.external_id-2)%c.children_per_parent)+1)
+            else format('第%s女',((p.external_id-2)%c.children_per_parent)+1) end,
        life.birth_date,
        case when p.external_id%10=0 then 'year' else 'day' end,
        case when p.external_id%5=0 then (life.birth_date+make_interval(years => 40+(p.external_id%56)))::date end,
@@ -186,7 +188,10 @@ select p.id,c.clan_id,b.id,format('PERF-%s-%09s',c.dataset_code,p.external_id),
        p.external_id*c.children_per_parent<=c.person_count,
        case when p.external_id%997=0 then 'adopted' else 'normal' end,
        case when p.external_id%100=0 then 'private' when p.external_id%10=0 then 'branch_only' else 'clan_only' end,
-       'official',c.admin_user_id,now()-((p.external_id%365)::text||' days')::interval,
+       case when p.external_id<=c.review_count then
+              case p.external_id%3 when 1 then 'pending_review' when 2 then 'rejected' else 'official' end
+            else 'official' end,
+       c.admin_user_id,now()-((p.external_id%365)::text||' days')::interval,
        c.admin_user_id,now(),null
 from perf_person_map p
 join perf_branch_map bm on bm.external_id=p.branch_external_id
@@ -210,11 +215,15 @@ insert into relationship (
     is_lineage_relation,is_biological,is_primary,description,confidence_level,
     data_status,created_by,created_at,updated_at
 )
-select c.clan_id,parent.id,child.id,'parent_child','father','blood',true,true,true,
-       '压测父子关系。','high','official',c.admin_user_id,now(),now()
+select c.clan_id,parent.id,child.id,'parent_child',
+       case parent_row.gender when 'male' then 'biological_father'
+                              when 'female' then 'biological_mother'
+                              else 'biological_parent' end,
+       'blood',true,true,true,'压测亲子关系。','high','official',c.admin_user_id,now(),now()
 from perf_person_map child
 cross join perf_config c
 join perf_person_map parent on parent.external_id=child.parent_external_id
+join person parent_row on parent_row.id=parent.id
 where child.external_id>1;
 
 insert into relationship (
@@ -222,12 +231,17 @@ insert into relationship (
     is_lineage_relation,is_biological,is_primary,description,confidence_level,
     data_status,created_by,created_at,updated_at
 )
-select c.clan_id,left_person.id,right_person.id,'spouse','spouse','marriage',false,false,true,
-       '压测婚配关系。','medium','official',c.admin_user_id,now(),now()
+select c.clan_id,pair.from_id,pair.to_id,'spouse','spouse','marriage',false,false,pair.primary_flag,
+       case when pair.primary_flag then '压测婚配关系。' else 'auto reverse spouse relationship' end,
+       'medium','official',c.admin_user_id,now(),now()
 from perf_config c
 join generate_series(2,c.person_count-1,2)n on true
 join perf_person_map left_person on left_person.external_id=n
-join perf_person_map right_person on right_person.external_id=n+1;
+join perf_person_map right_person on right_person.external_id=n+1
+cross join lateral (values
+    (left_person.id,right_person.id,true),
+    (right_person.id,left_person.id,false)
+) pair(from_id,to_id,primary_flag);
 
 insert into relationship (
     clan_id,from_person_id,to_person_id,relation_type,relation_label,
@@ -235,18 +249,32 @@ insert into relationship (
     is_lineage_relation,is_biological,is_primary,description,confidence_level,
     data_status,created_by,created_at,updated_at
 )
-select c.clan_id,parent.id,child.id,
-       case (child.external_id/1000)%5 when 0 then 'in_adoption' when 1 then 'out_adoption' when 2 then 'successor' when 3 then 'dual_successor' else 'heir_son' end,
-       'performance_ritual','ritual',
-       case (child.external_id/1000)%5 when 0 then 'in_adoption' when 1 then 'out_adoption' when 2 then 'successor' when 3 then 'dual_successor' else 'heir_son' end,
-       branch_row.id,'压测宗法承继',true,false,false,'固定千分位礼法关系。',
-       'medium','official',c.admin_user_id,now(),now()
+select c.clan_id,parent.id,child.id,ritual.relation_type,
+       case ritual.relation_type
+         when 'in_adoption' then case parent_row.gender when 'male' then 'legal_father' when 'female' then 'legal_mother' else 'legal_parent' end
+         when 'out_adoption' then 'out_adopted'
+         when 'successor' then 'heir_successor'
+         when 'dual_successor' then 'dual_successor'
+         else 'heir_son'
+       end,
+       'ritual',ritual.relation_type,branch_row.id,'压测宗法承继',true,false,false,
+       '固定千分位礼法关系。','medium','official',c.admin_user_id,now(),now()
 from perf_config c
 join generate_series(1000,c.person_count,1000)n on true
 join perf_person_map child on child.external_id=n
-join perf_person_map parent on parent.external_id=greatest(1,n-c.children_per_parent)
+join perf_person_map parent on parent.external_id=child.parent_external_id
+join person parent_row on parent_row.id=parent.id
 join perf_branch_map bm on bm.external_id=child.branch_external_id
-join branch branch_row on branch_row.id=bm.id;
+join branch branch_row on branch_row.id=bm.id
+cross join lateral (values (
+    case (child.external_id/1000)%5
+      when 0 then 'in_adoption'
+      when 1 then 'out_adoption'
+      when 2 then 'successor'
+      when 3 then 'dual_successor'
+      else 'heir_son'
+    end
+)) ritual(relation_type);
 
 insert into person_event (
     clan_id,person_id,event_type,event_title,event_date,event_date_precision,
@@ -341,8 +369,8 @@ insert into revision (
     id,clan_id,trace_id,target_type,target_id,change_type,before_data,after_data,
     diff_summary,submitter_id,submit_time,status,approved_at,rejected_reason
 )
-select r.id,c.clan_id,r.trace_id,'person',p.id,'modified',jsonb_build_object('dataStatus','draft'),
-       jsonb_build_object('dataStatus','official'),format('压测审核-%s',r.external_id),
+select r.id,c.clan_id,r.trace_id,'person',p.id,'modified',jsonb_build_object('dataStatus','official'),
+       jsonb_build_object('dataStatus','pending_review'),format('压测审核-%s',r.external_id),
        c.editor_user_id,now()-(r.external_id%30||' days')::interval,
        case r.external_id%3 when 0 then 'approved' when 1 then 'pending' else 'rejected' end,
        case when r.external_id%3=0 then now() else null end,
