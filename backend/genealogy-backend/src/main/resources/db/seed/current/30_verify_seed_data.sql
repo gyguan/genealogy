@@ -174,8 +174,18 @@ begin
       join verified_seed_clan c on c.id=r.clan_id
       where r.relation_type='parent_child'
         and parent.generation_no is not null and child.generation_no is not null
+        and parent.generation_no>=child.generation_no
+    ) then raise exception 'Parent-child generation order conflicts with application rules'; end if;
+    if exists(
+      select 1 from relationship r
+      join person parent on parent.id=r.from_person_id
+      join person child on child.id=r.to_person_id
+      join verified_seed_clan c on c.id=r.clan_id
+      where r.relation_type='parent_child'
+        and parent.person_code like 'PERF-%' and child.person_code like 'PERF-%'
+        and parent.generation_no is not null and child.generation_no is not null
         and child.generation_no<>parent.generation_no+1
-    ) then raise exception 'Parent-child generation numbers are inconsistent'; end if;
+    ) then raise exception 'Performance parent-child generation numbers are inconsistent'; end if;
     if exists(
       select 1 from relationship r
       join person ancestor on ancestor.id=r.from_person_id
