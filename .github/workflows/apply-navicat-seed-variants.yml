@@ -15,7 +15,31 @@ permissions:
 jobs:
   apply:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: genealogy
+          POSTGRES_USER: genealogy
+          POSTGRES_PASSWORD: genealogy
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U genealogy -d genealogy"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    env:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/genealogy
+      SPRING_DATASOURCE_USERNAME: genealogy
+      SPRING_DATASOURCE_PASSWORD: genealogy
+      SPRING_FLYWAY_ENABLED: "true"
+      PGPASSWORD: genealogy
+      DATABASE_URL: postgresql://genealogy@localhost:5432/genealogy
+
     steps:
       - name: Checkout generation branch
         uses: actions/checkout@v4
@@ -30,20 +54,54 @@ jobs:
           java-version: "17"
           cache: maven
 
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y postgresql-client
+
       - name: Generate Navicat-compatible variants
         run: |
           set -euo pipefail
           python3 .github/scripts/generate_navicat_seed_variants.py
-          python3 - <<'PY'
-          from pathlib import Path
-          path = Path('backend/genealogy-backend/src/main/resources/db/seed/current/README.md')
-          path.write_text(path.read_text(encoding='utf-8').rstrip() + '\n', encoding='utf-8')
-          PY
           git diff --check
 
       - name: Run seed contract test
         working-directory: backend/genealogy-backend
         run: mvn -B -q -Dtest=CurrentSeedDataContractTest test
+
+      - name: Apply all Flyway migrations
+        working-directory: backend/genealogy-backend
+        run: |
+          set -euo pipefail
+          mvn -B -q -DskipTests package
+          java -jar target/genealogy-backend-0.1.0-SNAPSHOT.jar >/tmp/navicat-seed-backend.log 2>&1 &
+          backend_pid=$!
+          ready=false
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:8080/api/v1/health >/dev/null; then
+              ready=true
+              break
+            fi
+            sleep 2
+          done
+          kill "${backend_pid}" || true
+          wait "${backend_pid}" || true
+          if [ "${ready}" != "true" ]; then
+            tail -n 300 /tmp/navicat-seed-backend.log || true
+            exit 1
+          fi
+
+      - name: Execute generated pure SQL variants
+        run: |
+          set -euo pipefail
+          navicat_dir="backend/genealogy-backend/src/main/resources/db/seed/current/navicat"
+          sed "s/'CHANGE_ME'/'RESET_CURRENT_GENEALOGY_DATA'/" \
+            "${navicat_dir}/00_reset_business_data.sql" > /tmp/navicat-reset.sql
+          psql "${DATABASE_URL}" --set=ON_ERROR_STOP=1 -f /tmp/navicat-reset.sql
+          psql "${DATABASE_URL}" --set=ON_ERROR_STOP=1 -f "${navicat_dir}/10_seed_current_scenarios.sql"
+          psql "${DATABASE_URL}" --set=ON_ERROR_STOP=1 -f "${navicat_dir}/30_verify_seed_data.sql"
+          psql "${DATABASE_URL}" --set=ON_ERROR_STOP=1 -f "${navicat_dir}/20_generate_performance_data.sql"
+          psql "${DATABASE_URL}" --set=ON_ERROR_STOP=1 -f "${navicat_dir}/30_verify_seed_data.sql"
 
       - name: Commit Navicat-compatible scripts
         run: |
@@ -53,7 +111,6 @@ jobs:
           git add \
             backend/genealogy-backend/src/main/resources/db/seed/current/navicat \
             backend/genealogy-backend/src/main/resources/db/seed/current/README.md \
-            backend/genealogy-backend/src/test/java/com/genealogy/database/CurrentSeedDataContractTest.java \
-            .github/workflows/current-seed-data-ci.yml
+            backend/genealogy-backend/src/test/java/com/genealogy/database/CurrentSeedDataContractTest.java
           git commit -m 'feat(db): add Navicat-compatible seed scripts'
           git push origin HEAD:agent/add-navicat-compatible-seed-scripts
