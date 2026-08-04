@@ -34,6 +34,11 @@ jobs:
         run: |
           set -euo pipefail
           python3 .github/scripts/generate_navicat_seed_variants.py
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('backend/genealogy-backend/src/main/resources/db/seed/current/README.md')
+          path.write_text(path.read_text(encoding='utf-8').rstrip() + '\n', encoding='utf-8')
+          PY
           git diff --check
 
       - name: Run seed contract test
