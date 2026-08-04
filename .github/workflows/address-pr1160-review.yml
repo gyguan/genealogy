@@ -56,6 +56,7 @@ jobs:
 
       - name: Commit review fixes and remove helper files
         run: |
+          git checkout -- .github/workflows/current-seed-data-ci.yml
           rm -f .github/workflows/address-pr1160-review.yml
           rm -f scripts/maintenance/address_pr1160_review.py
           git config user.name "github-actions[bot]"
