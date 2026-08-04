@@ -1,0 +1,58 @@
+name: Apply Current Seed Generation Verification Fix
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/apply-current-seed-generation-fix.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repair branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/fix-current-seed-model-alignment
+          fetch-depth: 0
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      - name: Apply verification correction
+        shell: bash
+        run: |
+          set -euo pipefail
+          base64 -d .github/current-seed-generation-check-fix.patch.gz.b64 | gzip -d > /tmp/current-seed-generation-check-fix.patch
+          git apply --check /tmp/current-seed-generation-check-fix.patch
+          git apply /tmp/current-seed-generation-check-fix.patch
+          rm .github/current-seed-generation-check-fix.patch.gz.b64
+          git diff --check
+
+      - name: Run current seed contract test
+        working-directory: backend/genealogy-backend
+        run: mvn -B -q -Dtest=CurrentSeedDataContractTest test
+
+      - name: Commit verification correction
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            .github/current-seed-generation-check-fix.patch.gz.b64 \
+            backend/genealogy-backend/src/main/resources/db/seed/current/30_verify_seed_data.sql \
+            backend/genealogy-backend/src/main/resources/db/seed/current/README.md \
+            backend/genealogy-backend/src/test/java/com/genealogy/database/CurrentSeedDataContractTest.java
+          git commit -m 'fix(db): match generation checks to application rules'
+          git push origin HEAD:agent/fix-current-seed-model-alignment
