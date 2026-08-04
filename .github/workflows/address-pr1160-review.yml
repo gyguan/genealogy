@@ -36,7 +36,16 @@ jobs:
           cache: maven
 
       - name: Apply deterministic review fixes
-        run: python scripts/maintenance/address_pr1160_review.py
+        run: |
+          python scripts/maintenance/address_pr1160_review.py
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("backend/genealogy-backend/src/test/java/com/genealogy/database/CurrentSeedDataContractTest.java")
+          content = path.read_text(encoding="utf-8")
+          if content.startswith("\\"):
+              path.write_text(content[1:], encoding="utf-8")
+          PY
 
       - name: Run focused contract validation
         working-directory: backend/genealogy-backend
