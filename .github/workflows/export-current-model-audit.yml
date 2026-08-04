@@ -1,0 +1,39 @@
+name: Export Current Model Audit Bundle
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/export-current-model-audit.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout latest main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+
+      - name: Package model and seed sources
+        run: |
+          tar -czf /tmp/current-model-audit.tgz \
+            backend/genealogy-backend/pom.xml \
+            backend/genealogy-backend/src/main/java \
+            backend/genealogy-backend/src/main/resources/db \
+            backend/genealogy-backend/src/main/resources/mapper \
+            backend/genealogy-backend/src/test/java
+
+      - name: Upload audit bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: current-model-audit-bundle
+          path: /tmp/current-model-audit.tgz
+          retention-days: 1
