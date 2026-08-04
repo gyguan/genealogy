@@ -173,6 +173,32 @@
                         .contains("Seed integrity verification passed");
             }
 
+            @Test
+            void navicatVariantsContainNoPsqlMetaCommandsOrVariables() throws IOException {
+                Path navicatRoot = ROOT.resolve("navicat");
+                String reset = Files.readString(navicatRoot.resolve("00_reset_business_data.sql"));
+                String scenario = Files.readString(navicatRoot.resolve("10_seed_current_scenarios.sql"));
+                String performance = Files.readString(navicatRoot.resolve("20_generate_performance_data.sql"));
+                String verification = Files.readString(navicatRoot.resolve("30_verify_seed_data.sql"));
+
+                for (String sql : new String[]{reset, scenario, performance, verification}) {
+                    assertThat(sql.lines().filter(line -> line.startsWith("\\")).toList()).isEmpty();
+                    assertThat(sql).doesNotContain(":'").doesNotContain(":{?");
+                }
+
+                assertThat(reset)
+                        .contains("values ('local', 'CHANGE_ME')")
+                        .contains("RESET_CURRENT_GENEALOGY_DATA")
+                        .contains("navicat_reset_parameters");
+                assertThat(performance)
+                        .contains("'NAVICAT_SMALL'")
+                        .contains("1000::integer person_count")
+                        .contains("50::integer branch_count");
+                assertThat(Files.readString(navicatRoot.resolve("README.md")))
+                        .contains("Navicat")
+                        .contains("rollback;");
+            }
+
             private String read(String fileName) throws IOException {
                 return Files.readString(ROOT.resolve(fileName));
             }
