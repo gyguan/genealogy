@@ -1,6 +1,12 @@
 name: Address PR 1160 review
 
 on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/address-pr1160-review.yml
+      - scripts/maintenance/address_pr1160_review.py
   push:
     branches:
       - agent/current-data-seed-factory
