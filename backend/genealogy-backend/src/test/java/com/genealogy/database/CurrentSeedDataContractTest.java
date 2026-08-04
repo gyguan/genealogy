@@ -26,10 +26,13 @@
                         .contains("pg_advisory_xact_lock")
                         .contains("restart identity cascade")
                         .contains("flyway_schema_history")
+                        .contains("app_password_reset_token")
+                        .contains("delete from app_login_attempt")
                         .doesNotContain("\\set environment local")
                         .doesNotContain("truncate table app_user")
                         .doesNotContain("truncate table app_role")
-                        .doesNotContain("truncate table app_permission");
+                        .doesNotContain("truncate table app_permission")
+                        .doesNotContain("delete from app_auth_security_event");
             }
 
             @Test
@@ -46,6 +49,9 @@
                         .contains("'dual_successor'")
                         .contains("'heir_son'")
                         .contains("'no_descendant'")
+                        .contains("'biological_father'")
+                        .contains("'legal_father'")
+                        .contains("'branch_subtree'")
                         .contains("'blood'")
                         .contains("'ritual'")
                         .contains("'marriage'")
@@ -70,6 +76,27 @@
                         .doesNotContain("'verified'")
                         .doesNotContain("'unverified'")
                         .doesNotContain("'oral_record'");
+            }
+
+            @Test
+            void scenarioSeedMatchesCurrentRelationshipReviewAndGrantSemantics() throws IOException {
+                String sql = read("10_seed_current_scenarios.sql");
+
+                assertThat(sql)
+                        .contains("(c_zhang,'SCN-Z-3201','SCN-Z-1112','heir_son'")
+                        .contains("(c_zhang,'SCN-Z-3201','SCN-Z-3201','no_descendant'")
+                        .contains("'in_adoption','legal_father','ritual'")
+                        .contains("select membership_branch,id,'branch_subtree',b_long")
+                        .contains("select membership_editor,id,'branch_subtree',b_east")
+                        .contains("select membership_viewer,id,'branch_subtree',b_east")
+                        .contains("'rejected','审核驳回，待补充原始录音。'")
+                        .contains("jsonb_build_object('dataStatus','pending_review')")
+                        .contains("jsonb_build_object('verificationStatus','draft'),jsonb_build_object('verificationStatus','pending_review')")
+                        .doesNotContain("'parent_child','father','blood'")
+                        .doesNotContain("'adoptive','adoptive_father','ritual'")
+                        .doesNotContain("'in_adoption','in_adopted','ritual'")
+                        .doesNotContain("select membership_branch,id,'branch',b_long")
+                        .doesNotContain("select membership_viewer,id,'self'");
             }
 
             @Test
@@ -108,6 +135,11 @@
                         .contains("with recursive person_tree")
                         .contains("make_interval(years =>")
                         .contains("relation_category")
+                        .contains("biological_mother")
+                        .contains("auto reverse spouse relationship")
+                        .contains("parent.external_id=child.parent_external_id")
+                        .doesNotContain("greatest(1,n-c.children_per_parent)")
+                        .contains("pending_review")
                         .contains("analyze relationship")
                         .doesNotContain("\nfor ")
                         .doesNotContain("\nwhile ");
@@ -120,13 +152,21 @@
                 assertThat(sql)
                         .contains("Cross-clan branch parent detected")
                         .contains("Branch cycle detected")
-                        .contains("Self relationship detected")
+                        .contains("Illegal self relationship detected")
+                        .contains("Relationship label is not normalized to current application semantics")
+                        .contains("Spouse reverse relationship is missing")
+                        .contains("Lineage relationship generation order conflicts with application rules")
+                        .contains("Review task and revision lifecycle states are inconsistent")
+                        .contains("Person state does not match revision lifecycle")
+                        .contains("Member role scope does not match current grant policy")
+                        .contains("Branch manager grant does not cover the managed branch")
                         .contains("Relationship type/category mismatch detected")
                         .contains("Self-review detected")
                         .contains("Member role scope points outside membership clan")
                         .contains("Root branch path/level does not match application hierarchy semantics")
                         .contains("Person death date precedes birth date")
-                        .contains("Parent-child generation numbers are inconsistent")
+                        .contains("Parent-child generation order conflicts with application rules")
+                        .contains("Performance parent-child generation numbers are inconsistent")
                         .contains("Async import recovery state is incomplete")
                         .contains("Missing quality-check statuses")
                         .contains("Workbench task action scenario is missing")

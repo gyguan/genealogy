@@ -186,7 +186,7 @@ begin
     select clan_id,branch_id,person_code,person_name,person_name,
            case when gender='male' then '字'||coalesce(generation_word,'未详')||'修' else null end,
            alias_name,gender,generation_no,generation_word,
-           '第'||coalesce(generation_no::text,'未知')||'代测试人物',
+           null,
            birth_date,birth_precision,death_date,death_precision,is_living,
            '虚构出生地',case when is_living is null then null else '虚构居住地' end,
            case when is_living=true then '现代职业' else '历史职业' end,
@@ -218,30 +218,30 @@ begin
         lineage boolean,biological boolean,primary_flag boolean,data_status text
     ) on commit drop;
     insert into seed_relation_input values
-      (c_zhang,'SCN-Z-0001','SCN-Z-0101','parent_child','father','blood',null,null,null,true,true,true,'official'),
-      (c_zhang,'SCN-Z-0001','SCN-Z-0201','parent_child','father','blood',null,null,null,true,true,true,'official'),
-      (c_zhang,'SCN-Z-0001','SCN-Z-0301','parent_child','father','blood',null,null,null,true,true,true,'official'),
-      (c_zhang,'SCN-Z-0101','SCN-Z-1101','parent_child','father','blood',null,null,null,true,true,true,'official'),
-      (c_zhang,'SCN-Z-0101','SCN-Z-1201','parent_child','father','blood',null,null,null,true,true,true,'official'),
-      (c_zhang,'SCN-Z-0201','SCN-Z-2101','parent_child','father','blood',null,null,null,true,true,true,'official'),
-      (c_zhang,'SCN-Z-1101','SCN-Z-1111','parent_child','father','blood',null,null,null,true,true,true,'official'),
-      (c_zhang,'SCN-Z-1201','SCN-Z-1211','parent_child','father','blood',null,null,null,true,true,true,'official'),
-      (c_zhang,'SCN-Z-0301','SCN-Z-3101','parent_child','father','blood',null,null,null,true,true,true,'official'),
-      (c_zhang,'SCN-Z-1111','SCN-Z-1112','parent_child','father','blood',null,null,null,true,true,true,'official'),
-      (c_li,'SCN-L-0001','SCN-L-0101','parent_child','father','blood',null,null,null,true,true,true,'official'),
+      (c_zhang,'SCN-Z-0001','SCN-Z-0101','parent_child','biological_father','blood',null,null,null,true,true,true,'official'),
+      (c_zhang,'SCN-Z-0001','SCN-Z-0201','parent_child','biological_father','blood',null,null,null,true,true,true,'official'),
+      (c_zhang,'SCN-Z-0001','SCN-Z-0301','parent_child','biological_father','blood',null,null,null,true,true,true,'official'),
+      (c_zhang,'SCN-Z-0101','SCN-Z-1101','parent_child','biological_father','blood',null,null,null,true,true,true,'official'),
+      (c_zhang,'SCN-Z-0101','SCN-Z-1201','parent_child','biological_father','blood',null,null,null,true,true,true,'official'),
+      (c_zhang,'SCN-Z-0201','SCN-Z-2101','parent_child','biological_father','blood',null,null,null,true,true,true,'official'),
+      (c_zhang,'SCN-Z-1101','SCN-Z-1111','parent_child','biological_father','blood',null,null,null,true,true,true,'official'),
+      (c_zhang,'SCN-Z-1201','SCN-Z-1211','parent_child','biological_father','blood',null,null,null,true,true,true,'official'),
+      (c_zhang,'SCN-Z-0301','SCN-Z-3101','parent_child','biological_father','blood',null,null,null,true,true,true,'official'),
+      (c_zhang,'SCN-Z-1111','SCN-Z-1112','parent_child','biological_father','blood',null,null,null,true,true,true,'official'),
+      (c_li,'SCN-L-0001','SCN-L-0101','parent_child','biological_father','blood',null,null,null,true,true,true,'official'),
       (c_zhang,'SCN-Z-0001','SCN-Z-0002','spouse','spouse','marriage',null,null,null,false,false,true,'official'),
       (c_zhang,'SCN-Z-0002','SCN-Z-0001','spouse','spouse','marriage',null,null,null,false,false,false,'official'),
       (c_zhang,'SCN-Z-0101','SCN-Z-0102','spouse','spouse','marriage',null,null,null,false,false,true,'official'),
       (c_zhang,'SCN-Z-0102','SCN-Z-0101','spouse','spouse','marriage',null,null,null,false,false,false,'official'),
       (c_zhang,'SCN-Z-0201','SCN-Z-0202','spouse','second_spouse','marriage',null,null,null,false,false,true,'official'),
       (c_zhang,'SCN-Z-0202','SCN-Z-0201','spouse','second_spouse','marriage',null,null,null,false,false,false,'official'),
-      (c_zhang,'SCN-Z-0201','SCN-Z-2102','adoptive','adoptive_father','ritual','adoptive',b_second,'家庭收养关系',false,false,true,'official'),
+      (c_zhang,'SCN-Z-0201','SCN-Z-2102','adoptive','legal_father','ritual','adoptive',b_second,'家庭收养关系',false,false,true,'official'),
       (c_zhang,'SCN-Z-0201','SCN-Z-2102','successor','heir_successor','ritual','successor',b_second,'二房延续香火',true,false,true,'official'),
       (c_zhang,'SCN-Z-0101','SCN-Z-2102','out_adoption','out_adopted','ritual','out_adoption',b_second,'由长房出嗣至二房',false,false,true,'official'),
-      (c_zhang,'SCN-Z-0201','SCN-Z-2102','in_adoption','in_adopted','ritual','in_adoption',b_second,'由长房入继二房',true,false,true,'official'),
+      (c_zhang,'SCN-Z-0201','SCN-Z-2102','in_adoption','legal_father','ritual','in_adoption',b_second,'由长房入继二房',true,false,true,'official'),
       (c_zhang,'SCN-Z-1201','SCN-Z-3101','dual_successor','dual_successor','ritual','dual_successor',b_west,'兼承三房与长房西支',true,false,true,'official'),
-      (c_zhang,'SCN-Z-3201','SCN-Z-3101','heir_son','heir_son','ritual','heir_son',b_third,'无嗣立嗣',true,false,false,'pending_review'),
-      (c_zhang,'SCN-Z-3201','SCN-Z-0301','no_descendant','no_descendant','status','no_descendant',null,'谱载无嗣',false,false,true,'official');
+      (c_zhang,'SCN-Z-3201','SCN-Z-1112','heir_son','heir_son','ritual','heir_son',b_third,'无嗣立嗣',true,false,false,'pending_review'),
+      (c_zhang,'SCN-Z-3201','SCN-Z-3201','no_descendant','no_descendant','status','no_descendant',null,'谱载无嗣',false,false,true,'official');
 
     insert into relationship (
         clan_id,from_person_id,to_person_id,relation_type,relation_label,
@@ -274,7 +274,7 @@ begin
     insert into source (clan_id,source_name,source_type,provider_name,book_title,source_date,excerpt,verification_status,description,confidence_level,privacy_level,sensitive_level,created_by,created_at,updated_at)
     values (c_zhang,'《嘉兴府志》迁徙条目','local_chronicle','虚构地方志馆','嘉兴府志','清末','测试摘录。','official','迁徙旁证。','medium','public','normal',u_admin,now()-interval '110 days',now()) returning id into src_chronicle;
     insert into source (clan_id,source_name,source_type,provider_name,source_date,excerpt,verification_status,description,confidence_level,privacy_level,sensitive_level,created_by,created_at,updated_at)
-    values (c_zhang,'长房口述访谈 2026-01','oral_history','虚构访谈人','2026-01','测试摘录。','pending_review','部分说法待复核。','low','branch_only','normal',u_editor,now()-interval '90 days',now()) returning id into src_oral;
+    values (c_zhang,'长房口述访谈 2026-01','oral_history','虚构访谈人','2026-01','测试摘录。','rejected','审核驳回，待补充原始录音。','low','branch_only','normal',u_editor,now()-interval '90 days',now()) returning id into src_oral;
     insert into source (clan_id,source_name,source_type,provider_name,source_date,excerpt,verification_status,description,confidence_level,privacy_level,sensitive_level,created_by,created_at,updated_at)
     values (c_zhang,'张明远墓碑拓片','tombstone','虚构祖茔管理人','1912','测试摘录。','official','墓碑影像及释文。','high','clan_only','sensitive',u_admin,now()-interval '80 days',now()) returning id into src_tomb;
     insert into source (clan_id,source_name,source_type,provider_name,source_date,excerpt,verification_status,description,confidence_level,privacy_level,sensitive_level,created_by,created_at,updated_at)
@@ -290,7 +290,7 @@ begin
       (c_zhang,src_book,'person',(select id from person where person_code='SCN-Z-0001'),'谱书人物记载','始迁祖记载。','high','official',u_admin,now()-interval '60 days',now()),
       (c_zhang,src_book,'relationship',(select id from relationship where relation_type='parent_child' and from_person_id=(select id from person where person_code='SCN-Z-0001') and to_person_id=(select id from person where person_code='SCN-Z-0101')),'谱书父子记载','世系表。','high','official',u_admin,now()-interval '60 days',now()),
       (c_zhang,src_chronicle,'branch',b_second,'地方志迁徙旁证','二房迁徙。','medium','official',u_admin,now()-interval '50 days',now()),
-      (c_zhang,src_oral,'relationship',(select id from relationship where relation_type='dual_successor' limit 1),'兼祧口述资料','兼承两房。','low','pending_review',u_editor,now()-interval '30 days',now()),
+      (c_zhang,src_oral,'relationship',(select id from relationship where relation_type='dual_successor' limit 1),'兼祧口述资料','兼承两房。','low','rejected',u_editor,now()-interval '30 days',now()),
       (c_zhang,src_tomb,'person',(select id from person where person_code='SCN-Z-0001'),'墓碑生卒旁证','墓碑卒年。','high','official',u_admin,now()-interval '40 days',now()),
       (c_zhang,src_private,'person',(select id from person where person_code='SCN-Z-1112'),'在世人员隐私材料','受限可见。','unknown','official',u_admin,now()-interval '5 days',now()),
       (c_zhang,src_book,'generation_word',(select id from generation_word where scheme_id=scheme_clan and generation_no=1),'字辈来源','谱首字派。','high','official',u_admin,now()-interval '55 days',now());
@@ -322,11 +322,11 @@ begin
       (c_zhang,b_root,(select id from person where person_code='SCN-Z-0001'),'cemetery','合肥张氏祖茔','安徽省合肥市虚构祖茔','清末','受保护','敏感文化场所。','不含真实坐标。',31.81,117.21,'medium','private','highly_sensitive','official',false,20,u_admin,now()-interval '45 days',now(),0);
 
     insert into revision (clan_id,trace_id,target_type,target_id,change_type,before_data,after_data,diff_summary,submitter_id,submit_time,status,approved_at,rejected_reason)
-    values (c_zhang,'11111111-1111-1111-1111-111111111111','person',(select id from person where person_code='SCN-Z-0001'),'modified',jsonb_build_object('dataStatus','draft'),jsonb_build_object('dataStatus','official'),'始迁祖资料正式入谱。',u_editor,now()-interval '60 days','approved',now()-interval '59 days',null) returning id into rev_approved;
+    values (c_zhang,'11111111-1111-1111-1111-111111111111','person',(select id from person where person_code='SCN-Z-0001'),'modified',jsonb_build_object('dataStatus','draft'),jsonb_build_object('dataStatus','pending_review'),'始迁祖资料正式入谱。',u_editor,now()-interval '60 days','approved',now()-interval '59 days',null) returning id into rev_approved;
     insert into revision (clan_id,trace_id,target_type,target_id,change_type,before_data,after_data,diff_summary,submitter_id,submit_time,status,approved_at,rejected_reason)
-    values (c_zhang,'22222222-2222-2222-2222-222222222222','relationship',(select id from relationship where relation_type='heir_son' limit 1),'created',null,jsonb_build_object('relationType','heir_son'),'无嗣立嗣等待审核。',u_editor,now()-interval '5 days','pending',null,null) returning id into rev_pending;
+    values (c_zhang,'22222222-2222-2222-2222-222222222222','relationship',(select id from relationship where relation_type='heir_son' limit 1),'created',null,jsonb_build_object('relationType','heir_son','dataStatus','pending_review'),'无嗣立嗣等待审核。',u_editor,now()-interval '5 days','pending',null,null) returning id into rev_pending;
     insert into revision (clan_id,trace_id,target_type,target_id,change_type,before_data,after_data,diff_summary,submitter_id,submit_time,status,approved_at,rejected_reason)
-    values (c_zhang,'33333333-3333-3333-3333-333333333333','source',src_oral,'modified',jsonb_build_object('verificationStatus','pending_review'),jsonb_build_object('verificationStatus','official'),'口述资料证据不足。',u_editor,now()-interval '10 days','rejected',null,'缺少原始录音。') returning id into rev_rejected;
+    values (c_zhang,'33333333-3333-3333-3333-333333333333','source',src_oral,'modified',jsonb_build_object('verificationStatus','draft'),jsonb_build_object('verificationStatus','pending_review'),'口述资料证据不足。',u_editor,now()-interval '10 days','rejected',null,'缺少原始录音。') returning id into rev_rejected;
 
     insert into review_task (clan_id,revision_id,trace_id,review_level,reviewer_id,reviewer_role,branch_id,status,review_comment,reviewed_at,created_at)
     values (c_zhang,rev_approved,'11111111-1111-1111-1111-111111111111',1,u_reviewer,'reviewer',b_root,'approved','证据一致。',now()-interval '59 days',now()-interval '60 days') returning id into task_approved;
@@ -486,13 +486,13 @@ begin
     insert into member_role (membership_id,role_id,scope_type,scope_id,status,granted_by,granted_at,created_by,created_at,updated_by,updated_at)
     select membership_admin,id,'clan',c_zhang,'active',u_admin,now()-interval '100 days',u_admin,now()-interval '100 days',u_admin,now() from app_role where role_code='clan_admin';
     insert into member_role (membership_id,role_id,scope_type,scope_id,status,granted_by,granted_at,created_by,created_at,updated_by,updated_at)
-    select membership_branch,id,'branch',b_long,'active',u_admin,now()-interval '90 days',u_admin,now()-interval '90 days',u_admin,now() from app_role where role_code='branch_admin' returning id into branch_role_assignment;
+    select membership_branch,id,'branch_subtree',b_long,'active',u_admin,now()-interval '90 days',u_admin,now()-interval '90 days',u_admin,now() from app_role where role_code='branch_admin' returning id into branch_role_assignment;
     insert into member_role (membership_id,role_id,scope_type,scope_id,status,granted_by,granted_at,created_by,created_at,updated_by,updated_at)
-    select membership_editor,id,'branch',b_east,'active',u_admin,now()-interval '80 days',u_admin,now()-interval '80 days',u_admin,now() from app_role where role_code='editor';
+    select membership_editor,id,'branch_subtree',b_east,'active',u_admin,now()-interval '80 days',u_admin,now()-interval '80 days',u_admin,now() from app_role where role_code='editor';
     insert into member_role (membership_id,role_id,scope_type,scope_id,status,granted_by,granted_at,created_by,created_at,updated_by,updated_at)
     select membership_reviewer,id,'clan',c_zhang,'active',u_admin,now()-interval '70 days',u_admin,now()-interval '70 days',u_admin,now() from app_role where role_code='reviewer';
     insert into member_role (membership_id,role_id,scope_type,scope_id,status,granted_by,granted_at,created_by,created_at,updated_by,updated_at)
-    select membership_viewer,id,'self',(select id from person where person_code='SCN-Z-1112'),'active',u_admin,now()-interval '60 days',u_admin,now()-interval '60 days',u_admin,now() from app_role where role_code='viewer';
+    select membership_viewer,id,'branch_subtree',b_east,'active',u_admin,now()-interval '60 days',u_admin,now()-interval '60 days',u_admin,now() from app_role where role_code='viewer';
     insert into member_role (membership_id,role_id,scope_type,scope_id,status,granted_by,granted_at,created_by,created_at,updated_by,updated_at)
     select membership_li,id,'clan',c_li,'active',u_admin,now()-interval '50 days',u_admin,now()-interval '50 days',u_admin,now() from app_role where role_code='clan_admin';
     update branch set manager_member_id=branch_role_assignment,updated_at=now() where id in (b_long,b_east,b_west);
