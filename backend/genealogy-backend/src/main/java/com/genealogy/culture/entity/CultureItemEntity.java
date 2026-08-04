@@ -2,6 +2,7 @@ package com.genealogy.culture.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.genealogy.culture.domain.CultureConfidenceLevel;
 import com.genealogy.culture.domain.CultureDataStatus;
@@ -44,6 +45,7 @@ public class CultureItemEntity {
 
     private String dataStatus = CultureDataStatus.DRAFT.value();
 
+    @TableField("is_featured_on_home")
     private boolean featuredOnHome;
 
     private Integer sortOrder = 0;

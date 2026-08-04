@@ -299,7 +299,7 @@ join perf_source_map s on s.external_id=((p.external_id/100-1)%c.source_count)+1
 insert into culture_item (
     clan_id,branch_id,category,title,summary,content,historical_period,
     location_text,confidence_level,privacy_level,sensitive_level,data_status,
-    featured_on_home,sort_order,created_by,created_at,updated_at,version
+    is_featured_on_home,sort_order,created_by,created_at,updated_at,version
 )
 select c.clan_id,b.id,
        (array['surname_origin','hall_name','commandery','family_instruction','ancestor_instruction','clan_rule','genealogy_preface','genealogy_rule','person_story','custom_tradition','other'])[((n-1)%11)+1],

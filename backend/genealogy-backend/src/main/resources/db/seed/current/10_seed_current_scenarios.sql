@@ -304,7 +304,7 @@ begin
       (c_zhang,(select id from person where person_code='SCN-Z-3101'),'succession','兼祧两房',date '1955-01-01','year','上海松江','兼承两房。','relationship',(select id from relationship where relation_type='dual_successor' limit 1),55,'official',u_editor,now()-interval '25 days',now(),null),
       (c_zhang,(select id from person where person_code='SCN-Z-1112'),'education','大学毕业',date '2020-06-01','month','上海','在世人员脱敏事件。','source',src_private,60,'official',u_editor,now()-interval '3 days',now(),null);
 
-    insert into culture_item (clan_id,branch_id,category,title,summary,content,historical_period,location_text,confidence_level,privacy_level,sensitive_level,data_status,featured_on_home,sort_order,created_by,created_at,updated_at,version)
+    insert into culture_item (clan_id,branch_id,category,title,summary,content,historical_period,location_text,confidence_level,privacy_level,sensitive_level,data_status,is_featured_on_home,sort_order,created_by,created_at,updated_at,version)
     values
       (c_zhang,null,'surname_origin','张氏得姓源流','首页姓氏源流。','虚构正文。','先秦至明清','河南淮阳','high','public','normal','official',true,10,u_editor,now()-interval '80 days',now(),0),
       (c_zhang,b_root,'clan_rule','百忍堂家规十则','宗族级家规。','虚构正文。','民国修订','安徽合肥','medium','clan_only','normal','official',true,20,u_editor,now()-interval '70 days',now(),0),
@@ -316,7 +316,7 @@ begin
       (c_zhang,b_root,1,'河南省周口市淮阳区','安徽省合肥市','清咸丰十年（约1860年）',(select id from person where person_code='SCN-Z-0001'),'避乱与经商','始迁祖迁居。','medium','public','normal','official',u_editor,now()-interval '60 days',now(),0),
       (c_zhang,b_second,2,'安徽省合肥市','浙江省嘉兴市','清末民初',(select id from person where person_code='SCN-Z-0201'),'经商定居','等待复核。','low','branch_only','normal','pending_review',u_editor,now()-interval '20 days',now(),0);
 
-    insert into culture_site (clan_id,branch_id,related_person_id,site_type,site_name,address_text,founded_period,current_status,summary,description,latitude,longitude,confidence_level,privacy_level,sensitive_level,data_status,featured_on_home,sort_order,created_by,created_at,updated_at,version)
+    insert into culture_site (clan_id,branch_id,related_person_id,site_type,site_name,address_text,founded_period,current_status,summary,description,latitude,longitude,confidence_level,privacy_level,sensitive_level,data_status,is_featured_on_home,sort_order,created_by,created_at,updated_at,version)
     values
       (c_zhang,b_root,(select id from person where person_code='SCN-Z-0001'),'ancestral_hall','百忍堂张氏宗祠','安徽省合肥市虚构地址','民国初年','修缮开放','首页文化场所。','虚构宗祠。',31.82,117.22,'high','public','normal','official',true,10,u_editor,now()-interval '50 days',now(),0),
       (c_zhang,b_root,(select id from person where person_code='SCN-Z-0001'),'cemetery','合肥张氏祖茔','安徽省合肥市虚构祖茔','清末','受保护','敏感文化场所。','不含真实坐标。',31.81,117.21,'medium','private','highly_sensitive','official',false,20,u_admin,now()-interval '45 days',now(),0);

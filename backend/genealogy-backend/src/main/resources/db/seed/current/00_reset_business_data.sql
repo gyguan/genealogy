@@ -8,7 +8,7 @@
 
 \if :{?environment}
 \else
-\set environment local
+\set environment ''
 \endif
 
 \if :{?confirm_reset}
