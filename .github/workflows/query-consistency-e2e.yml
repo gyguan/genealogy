@@ -1,0 +1,340 @@
+name: Query Culture Audit Consistency E2E
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "backend/genealogy-backend/**"
+      - "frontend/genealogy-web/e2e-query-consistency/**"
+      - "frontend/genealogy-web/playwright.query-consistency.config.ts"
+      - "frontend/genealogy-web/src/features/home/**"
+      - "frontend/genealogy-web/src/features/persons/**"
+      - "frontend/genealogy-web/src/features/sources/**"
+      - "frontend/genealogy-web/src/features/tree/**"
+      - "frontend/genealogy-web/src/features/culture/**"
+      - "frontend/genealogy-web/src/features/logs/**"
+      - "docs/testing/issue-835-execution.md"
+      - ".github/workflows/query-consistency-e2e.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: query-consistency-e2e-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  query-consistency-e2e:
+    name: Query display culture and audit consistency
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: genealogy
+          POSTGRES_USER: genealogy
+          POSTGRES_PASSWORD: genealogy
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U genealogy -d genealogy"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+
+    env:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://127.0.0.1:5432/genealogy
+      SPRING_DATASOURCE_USERNAME: genealogy
+      SPRING_DATASOURCE_PASSWORD: genealogy
+      SPRING_PROFILES_ACTIVE: functional-test
+      VITE_API_PROXY_TARGET: http://127.0.0.1:8080
+      E2E_BASE_URL: http://127.0.0.1:5179
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGDATABASE: genealogy
+      PGUSER: genealogy
+      PGPASSWORD: genealogy
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/genealogy-web/package.json
+
+      - name: Generate isolated identities
+        shell: bash
+        run: |
+          set -euo pipefail
+          suffix="${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}"
+          {
+            echo "QUERY_RUN_ID=gha-${suffix}"
+            echo "QUERY_ADMIN_USERNAME=query_admin_${suffix}"
+            echo "QUERY_ADMIN_PASSWORD=$(openssl rand -hex 16)"
+            echo "QUERY_REVIEWER_USERNAME=query_reviewer_${suffix}"
+            echo "QUERY_REVIEWER_PASSWORD=$(openssl rand -hex 16)"
+            echo "QUERY_VIEWER_USERNAME=query_viewer_${suffix}"
+            echo "QUERY_VIEWER_PASSWORD=$(openssl rand -hex 16)"
+            echo "QUERY_OUTSIDER_USERNAME=query_outsider_${suffix}"
+            echo "QUERY_OUTSIDER_PASSWORD=$(openssl rand -hex 16)"
+          } >> "$GITHUB_ENV"
+
+      - name: Build backend
+        working-directory: backend/genealogy-backend
+        run: mvn -B -DskipITs package
+
+      - name: Start backend
+        working-directory: backend/genealogy-backend
+        shell: bash
+        run: |
+          set -euo pipefail
+          java -jar target/genealogy-backend-0.1.0-SNAPSHOT.jar > ../../query-consistency-backend.log 2>&1 &
+          echo $! > ../../query-consistency-backend.pid
+          for attempt in $(seq 1 60); do
+            if (echo > /dev/tcp/127.0.0.1/8080) >/dev/null 2>&1; then
+              exit 0
+            fi
+            sleep 2
+          done
+          tail -n 300 ../../query-consistency-backend.log || true
+          exit 1
+
+      - name: Seed clans branches and roles
+        shell: bash
+        run: |
+          set -euo pipefail
+          exec > >(tee query-consistency-seed.log) 2>&1
+          if ! command -v psql >/dev/null; then
+            sudo apt-get update
+            sudo apt-get install -y postgresql-client
+          fi
+
+          register_user() {
+            local username="$1"
+            local password="$2"
+            local display_name="$3"
+            jq -nc \
+              --arg username "$username" \
+              --arg password "$password" \
+              --arg displayName "$display_name" \
+              '{username:$username,password:$password,displayName:$displayName,phone:null,email:null}' \
+              | curl --fail-with-body --silent --show-error \
+                  -H 'Content-Type: application/json' \
+                  --data-binary @- \
+                  http://127.0.0.1:8080/api/v1/auth/register
+          }
+
+          login_user() {
+            local username="$1"
+            local password="$2"
+            local cookie_file="$3"
+            local response_file="$4"
+            jq -nc \
+              --arg username "$username" \
+              --arg password "$password" \
+              '{username:$username,password:$password,rememberMe:false}' \
+              | curl --fail-with-body --silent --show-error \
+                  -c "$cookie_file" \
+                  -H 'Content-Type: application/json' \
+                  --data-binary @- \
+                  http://127.0.0.1:8080/api/v1/auth/login \
+                  > "$response_file"
+          }
+
+          register_user "$QUERY_ADMIN_USERNAME" "$QUERY_ADMIN_PASSWORD" "查询一致性宗族管理员" > query-admin-register.json
+          register_user "$QUERY_REVIEWER_USERNAME" "$QUERY_REVIEWER_PASSWORD" "查询一致性审核员" > query-reviewer-register.json
+          register_user "$QUERY_VIEWER_USERNAME" "$QUERY_VIEWER_PASSWORD" "查询一致性子树查看者" > query-viewer-register.json
+          register_user "$QUERY_OUTSIDER_USERNAME" "$QUERY_OUTSIDER_PASSWORD" "查询一致性跨宗族账号" > query-outsider-register.json
+
+          admin_user_id="$(jq -r '.data.id // empty' query-admin-register.json)"
+          reviewer_user_id="$(jq -r '.data.id // empty' query-reviewer-register.json)"
+          viewer_user_id="$(jq -r '.data.id // empty' query-viewer-register.json)"
+          outsider_user_id="$(jq -r '.data.id // empty' query-outsider-register.json)"
+          test -n "$admin_user_id" && test -n "$reviewer_user_id" && test -n "$viewer_user_id" && test -n "$outsider_user_id"
+
+          login_user "$QUERY_ADMIN_USERNAME" "$QUERY_ADMIN_PASSWORD" query-admin.cookies query-admin-login.json
+          admin_csrf="$(jq -r '.data.csrfToken // empty' query-admin-login.json)"
+          test -n "$admin_csrf"
+
+          core_clan_name="查询一致性核心宗族-${QUERY_RUN_ID}"
+          jq -nc \
+            --arg clanName "$core_clan_name" \
+            '{clanCode:null,clanName:$clanName,surname:"黄",hallName:"一致堂",commandery:"江夏郡",originPlace:"长沙",description:"#835 查询文化审计一致性真实测试"}' \
+            | curl --fail-with-body --silent --show-error \
+                -b query-admin.cookies \
+                -H 'Content-Type: application/json' \
+                -H "X-CSRF-Token: ${admin_csrf}" \
+                --data-binary @- \
+                http://127.0.0.1:8080/api/v1/clans \
+                > query-core-clan.json
+          core_clan_id="$(jq -r '.data.id // empty' query-core-clan.json)"
+          test -n "$core_clan_id"
+
+          create_branch() {
+            local parent_id="$1"
+            local branch_name="$2"
+            local sort_order="$3"
+            jq -nc \
+              --argjson parentId "$parent_id" \
+              --arg branchName "$branch_name" \
+              --argjson sortOrder "$sort_order" \
+              '{parentId:$parentId,branchName:$branchName,sortOrder:$sortOrder,founderPersonId:null,migrationFrom:"江夏",migrationTo:"长沙",managerMemberId:null,description:"#835 查询一致性支派基线"}' \
+              | curl --fail-with-body --silent --show-error \
+                  -b query-admin.cookies \
+                  -H 'Content-Type: application/json' \
+                  -H "X-CSRF-Token: ${admin_csrf}" \
+                  --data-binary @- \
+                  "http://127.0.0.1:8080/api/v1/clans/${core_clan_id}/branches"
+          }
+
+          root_branch_name="授权根支派-${QUERY_RUN_ID}"
+          child_branch_name="授权下级支派-${QUERY_RUN_ID}"
+          sibling_branch_name="兄弟支派-${QUERY_RUN_ID}"
+          create_branch null "$root_branch_name" 1 > query-root-branch.json
+          root_branch_id="$(jq -r '.data.id // empty' query-root-branch.json)"
+          test -n "$root_branch_id"
+          psql -v ON_ERROR_STOP=1 -c "update branch set status = 'official' where id = ${root_branch_id}"
+
+          create_branch "$root_branch_id" "$child_branch_name" 1 > query-child-branch.json
+          create_branch null "$sibling_branch_name" 2 > query-sibling-branch.json
+          child_branch_id="$(jq -r '.data.id // empty' query-child-branch.json)"
+          sibling_branch_id="$(jq -r '.data.id // empty' query-sibling-branch.json)"
+          test -n "$child_branch_id" && test -n "$sibling_branch_id"
+          psql -v ON_ERROR_STOP=1 -c "update branch set status = 'official' where id in (${child_branch_id}, ${sibling_branch_id})"
+
+          grant_role() {
+            local user_id="$1"
+            local role_code="$2"
+            local scope_type="$3"
+            local scope_id="$4"
+            local reason="$5"
+            jq -nc \
+              --argjson userId "$user_id" \
+              --arg roleCode "$role_code" \
+              --arg scopeType "$scope_type" \
+              --argjson scopeId "$scope_id" \
+              --arg reason "$reason" \
+              '{userId:$userId,roleCode:$roleCode,scopeType:$scopeType,scopeId:$scopeId,reason:$reason}' \
+              | curl --fail-with-body --silent --show-error \
+                  -b query-admin.cookies \
+                  -H 'Content-Type: application/json' \
+                  -H "X-CSRF-Token: ${admin_csrf}" \
+                  --data-binary @- \
+                  "http://127.0.0.1:8080/api/v1/clans/${core_clan_id}/member-grants"
+          }
+
+          grant_role "$reviewer_user_id" reviewer clan "$core_clan_id" "#835 授予独立审核员" > query-reviewer-grant.json
+          grant_role "$viewer_user_id" viewer branch_subtree "$root_branch_id" "#835 授予授权子树查看者" > query-viewer-grant.json
+
+          login_user "$QUERY_OUTSIDER_USERNAME" "$QUERY_OUTSIDER_PASSWORD" query-outsider.cookies query-outsider-login.json
+          outsider_csrf="$(jq -r '.data.csrfToken // empty' query-outsider-login.json)"
+          test -n "$outsider_csrf"
+          outsider_clan_name="查询一致性隔离宗族-${QUERY_RUN_ID}"
+          jq -nc \
+            --arg clanName "$outsider_clan_name" \
+            '{clanCode:null,clanName:$clanName,surname:"测",hallName:"隔离堂",commandery:null,originPlace:"CI",description:"#835 跨宗族隔离基线"}' \
+            | curl --fail-with-body --silent --show-error \
+                -b query-outsider.cookies \
+                -H 'Content-Type: application/json' \
+                -H "X-CSRF-Token: ${outsider_csrf}" \
+                --data-binary @- \
+                http://127.0.0.1:8080/api/v1/clans \
+                > query-outsider-clan.json
+          outsider_clan_id="$(jq -r '.data.id // empty' query-outsider-clan.json)"
+          test -n "$outsider_clan_id"
+
+          {
+            echo "QUERY_CORE_CLAN_ID=${core_clan_id}"
+            echo "QUERY_OUTSIDER_CLAN_ID=${outsider_clan_id}"
+            echo "QUERY_ROOT_BRANCH_ID=${root_branch_id}"
+            echo "QUERY_CHILD_BRANCH_ID=${child_branch_id}"
+            echo "QUERY_SIBLING_BRANCH_ID=${sibling_branch_id}"
+            echo "QUERY_ADMIN_USER_ID=${admin_user_id}"
+            echo "QUERY_REVIEWER_USER_ID=${reviewer_user_id}"
+            echo "QUERY_VIEWER_USER_ID=${viewer_user_id}"
+            echo "QUERY_OUTSIDER_USER_ID=${outsider_user_id}"
+            echo "QUERY_ROOT_BRANCH_NAME=${root_branch_name}"
+            echo "QUERY_CHILD_BRANCH_NAME=${child_branch_name}"
+            echo "QUERY_SIBLING_BRANCH_NAME=${sibling_branch_name}"
+          } >> "$GITHUB_ENV"
+
+      - name: Install frontend dependencies
+        working-directory: frontend/genealogy-web
+        run: npm install
+
+      - name: Install Chromium
+        working-directory: frontend/genealogy-web
+        run: npx playwright install --with-deps chromium
+
+      - name: Start frontend
+        working-directory: frontend/genealogy-web
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run dev -- --host 127.0.0.1 > ../../query-consistency-frontend.log 2>&1 &
+          echo $! > ../../query-consistency-frontend.pid
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:5179/ >/dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          tail -n 200 ../../query-consistency-frontend.log || true
+          exit 1
+
+      - name: Run query consistency Playwright
+        working-directory: frontend/genealogy-web
+        shell: bash
+        run: |
+          set -o pipefail
+          npx playwright test -c playwright.query-consistency.config.ts 2>&1 | tee ../../query-consistency-playwright.log
+
+      - name: Print diagnostics on failure
+        if: failure()
+        shell: bash
+        run: |
+          echo '===== Seed ====='
+          tail -n 350 query-consistency-seed.log || true
+          echo '===== Backend ====='
+          tail -n 400 query-consistency-backend.log || true
+          echo '===== Frontend ====='
+          tail -n 250 query-consistency-frontend.log || true
+          echo '===== Playwright ====='
+          tail -n 400 query-consistency-playwright.log || true
+
+      - name: Upload query consistency evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: query-consistency-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            query-consistency-seed.log
+            query-consistency-backend.log
+            query-consistency-frontend.log
+            query-consistency-playwright.log
+            query-*.json
+            frontend/genealogy-web/test-results/query-consistency-e2e/**
+            frontend/genealogy-web/playwright-report-query-consistency/**
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Stop services
+        if: always()
+        shell: bash
+        run: |
+          if [[ -f query-consistency-frontend.pid ]]; then kill "$(cat query-consistency-frontend.pid)" 2>/dev/null || true; fi
+          if [[ -f query-consistency-backend.pid ]]; then kill "$(cat query-consistency-backend.pid)" 2>/dev/null || true; fi
