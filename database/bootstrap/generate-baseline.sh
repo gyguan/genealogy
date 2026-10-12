@@ -65,5 +65,31 @@ docker exec -i "$cid" psql -U genealogy -d genealogy_baseline_verify -v ON_ERROR
 docker exec "$cid" psql -U genealogy -d genealogy_baseline_verify -Atc \
   "select 'tables=' || count(*) from information_schema.tables where table_schema='public' and table_type='BASE TABLE';" \
   >>"$OUT/verify.log"
+# End-to-end Flyway verification: install the new baseline into a THIRD empty database.
+docker exec "$cid" psql -U genealogy -d postgres -v ON_ERROR_STOP=1 \
+  -c 'CREATE DATABASE genealogy_baseline_runtime' >/dev/null
+# The baseline is generated in the output folder; Spring Boot still loads embedded classpath resources.
+# Run direct Flyway against the generated SQL files with temporary filesystem locations.
+if [ -n "$app_pid" ]; then kill "$app_pid" 2>/dev/null || true; wait "$app_pid" 2>/dev/null || true; app_pid=""; fi
+(cd "$BACKEND" && DB_URL="jdbc:postgresql://localhost:$port/genealogy_baseline_runtime" \
+  DB_USERNAME=genealogy DB_PASSWORD=local_baseline_only SERVER_PORT=0 \
+  GENEALOGY_AUTH_DEMO_MODE_ENABLED=false \
+  mvn -q -DskipTests spring-boot:run -Dspring-boot.run.profiles=local \
+  "-Dspring-boot.run.arguments=--spring.flyway.locations=filesystem:$OUT" \
+  >"$OUT/baseline-runtime.log" 2>&1) &
+app_pid=$!
+runtime_ok=0
+for i in $(seq 1 120); do
+  if grep -Eq 'Started GenealogyApplication|Started .*Application' "$OUT/baseline-runtime.log"; then runtime_ok=1; break; fi
+  if ! kill -0 "$app_pid" 2>/dev/null; then break; fi
+  sleep 2
+done
+if [ "$runtime_ok" -ne 1 ]; then
+  echo "Fresh Flyway baseline startup failed; see $OUT/baseline-runtime.log" >&2
+  exit 1
+fi
+docker exec "$cid" psql -U genealogy -d genealogy_baseline_runtime -Atc \
+  "select 'migrations=' || count(*) from flyway_schema_history where success;" \
+  >>"$OUT/verify.log"
 echo "Generated schema and RBAC seed: $OUT"
 echo "IMPORTANT: Generated output is NOT activated until reviewed and committed to db/migration."
