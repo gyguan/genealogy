@@ -29,7 +29,7 @@ docker exec "$cid" pg_isready -U genealogy -d genealogy_baseline >/dev/null
 (cd "$BACKEND" && DB_URL="jdbc:postgresql://localhost:$port/genealogy_baseline" \
   DB_USERNAME=genealogy DB_PASSWORD=local_baseline_only SERVER_PORT=0 \
   GENEALOGY_AUTH_DEMO_MODE_ENABLED=false \
-  mvn -q -DskipTests spring-boot:run -Dspring-boot.run.profiles=local \
+  mvn -q -DskipTests spring-boot:run -Dspring-boot.run.profiles=local -Dspring-boot.run.arguments=--spring.flyway.locations=classpath:db/migration \
   >"$OUT/application-startup.log" 2>&1) &
 app_pid=$!
 ok=0
