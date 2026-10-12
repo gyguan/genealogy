@@ -49,12 +49,12 @@ fi
 # pg_dump reconstructs final CREATE TABLE / constraints / indexes, NOT historical ALTER chains.
 docker exec "$cid" pg_dump -U genealogy -d genealogy_baseline \
   --schema-only --no-owner --no-privileges --exclude-table=flyway_schema_history \
-  | sed '/^\\\\restrict /d; /^\\\\unrestrict /d' >"$OUT/V1__create_current_schema.sql"
+  | awk 'substr($0,1,1) != sprintf("%c",92)' >"$OUT/V1__create_current_schema.sql"
 # System RBAC reference data must be present on an otherwise empty installation.
 docker exec "$cid" pg_dump -U genealogy -d genealogy_baseline \
   --data-only --inserts --column-inserts --no-owner --no-privileges \
   --table=public.app_role --table=public.app_permission --table=public.app_role_permission \
-  | sed '/^\\\\restrict /d; /^\\\\unrestrict /d' >"$OUT/V2__seed_system_authorization.sql"
+  | awk 'substr($0,1,1) != sprintf("%c",92)' >"$OUT/V2__seed_system_authorization.sql"
 # Validate both artifacts against an empty scratch database without starting the app.
 docker exec "$cid" psql -U genealogy -d postgres -v ON_ERROR_STOP=1 \
   -c 'CREATE DATABASE genealogy_baseline_verify' >/dev/null
