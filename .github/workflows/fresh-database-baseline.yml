@@ -1,0 +1,33 @@
+name: Fresh Database Baseline Check
+on:
+  pull_request:
+    paths:
+      - 'database/bootstrap/**'
+      - '.github/workflows/fresh-database-baseline.yml'
+      - 'backend/genealogy-backend/src/main/resources/db/migration/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  generate-baseline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+          cache-dependency-path: backend/genealogy-backend/pom.xml
+      - name: Generate isolated PostgreSQL baseline and replay SQL
+        run: bash database/bootstrap/generate-baseline.sh
+      - name: Upload SQL and diagnostic logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fresh-database-baseline
+          path: database/bootstrap/generated/
+          retention-days: 7
