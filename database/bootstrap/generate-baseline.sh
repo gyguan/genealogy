@@ -52,7 +52,7 @@ docker exec "$cid" pg_dump -U genealogy -d genealogy_baseline \
   | sed '/^\\\\restrict /d; /^\\\\unrestrict /d' >"$OUT/V1__create_current_schema.sql"
 # System RBAC reference data must be present on an otherwise empty installation.
 docker exec "$cid" pg_dump -U genealogy -d genealogy_baseline \
-  --data-only --no-owner --no-privileges \
+  --data-only --inserts --column-inserts --no-owner --no-privileges \
   --table=public.app_role --table=public.app_permission --table=public.app_role_permission \
   | sed '/^\\\\restrict /d; /^\\\\unrestrict /d' >"$OUT/V2__seed_system_authorization.sql"
 # Validate both artifacts against an empty scratch database without starting the app.
