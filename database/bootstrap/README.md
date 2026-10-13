@@ -1,41 +1,65 @@
-# PostgreSQL 16: fresh-install baseline
+# Fresh PostgreSQL database baseline
 
-## Active installation path
+This repository now treats the database as a **fresh-install baseline**. Pre-reset databases are not an upgrade target.
 
-`backend/genealogy-backend/src/main/resources/db/baseline/` is the **only default Flyway location** (see `application.yml`):
+## Runtime Flyway layout
 
-- `V1__create_current_schema.sql` — final-state database structure, foreign keys, checks and indexes.
-- `V2__seed_system_authorization.sql` — system roles, permissions and role grants. No demonstration users or sample genealogies.
+Active runtime migrations:
 
-Brand-new deployments only. **Existing databases with the previous Flyway history are unsupported**: they must be backed up and recreated deliberately. Never drop a production database as part of application startup.
+```text
+backend/genealogy-backend/src/main/resources/db/migration/
+├── V1__create_current_schema.sql
+└── V2__seed_system_authorization.sql
+```
 
-## Historical SQL
+- **V1** contains the current PostgreSQL schema: tables, sequences, constraints and indexes.
+- **V2** contains only system authorization reference data: built-in roles, permissions and role-permission grants.
+- Demo accounts, genealogy examples, performance data and test scenarios are **not** loaded by Flyway.
+- `application.yml` uses the standard `classpath:db/migration` location.
 
-The old `src/main/resources/db/migration/` directory is now an **inactive legacy archive** for auditing and regenerating the baseline. Neither startup nor standard Flyway runs load it. The historical SQL is not deleted to preserve migration provenance; do not put that directory in `spring.flyway.locations` in fresh deployments.
+The baseline currently contains 38 application tables. Migration-only compatibility objects such as `role`, `clan_member_legacy`, `member_role_scope_migration_2026071301` and the `clan_member` compatibility view are intentionally excluded.
 
-Demo/test/performance data are separate under `db/seed/`, and must be applied **only by explicit action**.
+## Legacy archive
 
-## Rebuild / verify
+The pre-consolidation Flyway chain is preserved only for audit and reproducibility:
 
-With Docker, Java 17 and Maven 3.9+ installed, from repository root:
+```text
+database/archive/legacy-flyway/
+```
+
+Nothing under `database/archive/` is on the application classpath or executed during startup. Do not add the archive to normal Flyway locations.
+
+Existing databases that contain the old Flyway history are unsupported by this baseline. Recreate the database deliberately after taking any required backup. The application never runs `clean`, `repair`, or destructive database recreation automatically.
+
+## Reproduce and verify the baseline
+
+Requirements: Docker, Java 17, Maven 3.9+, PostgreSQL 16 container support.
+
+From the repository root:
 
 ```bash
 bash database/bootstrap/generate-baseline.sh
 ```
 
-The script uses an isolated disposable PostgreSQL 16 container:
-1. Runs **legacy migrations** explicitly on a temporary database and starts the backend.
-2. Dumps the final schema and exports RBAC using SQL INSERTs, stripping psql-only directives.
-3. Executes both generated files in a second scratch database.
-4. Boots Spring Boot against a **third empty database** using the generated V1/V2 via Flyway; failure of Flyway, Hibernate or startup fails the check.
+The script:
 
-CI: `.github/workflows/fresh-database-baseline.yml`. Its successful run is the evidence for this snapshot. Generated output is committed only from the dedicated working branch.
+1. creates an isolated PostgreSQL 16 database;
+2. replays the archived legacy chain only as historical input;
+3. removes migration-only compatibility objects;
+4. reconstructs the final schema with `pg_dump`;
+5. exports only the current RBAC reference rows;
+6. replays the generated V1/V2 into another empty database;
+7. starts the real Spring Boot application against a third empty database using the generated V1/V2.
 
-If the checked-in active baseline changes, always verify fresh Flyway startup, Hibernate schema validation, and relevant repository/integration tests before merge. All future schema modifications use higher-numbered Flyway migrations **inside `db/baseline/`** and must not modify V1/V2 after the reset has shipped.
+CI additionally requires the generated V1/V2 files to be byte-for-byte identical to the checked-in active migrations.
 
-## Important limitations
+## Future schema changes
 
-- The snapshot is intentionally a **mechanical final-state consolidation** of the previous schema (including currently deployed legacy tables). It does **not** automatically delete tables merely because their names look old.
-- The system starts without demo users. Initial administrator onboarding must use the supported account provisioning flow, not embed passwords in SQL.
-- The existing governance validator for `db/migration` covers legacy history; it needs to be extended to enforce new baseline immutability and naming.
-- This reset is destructive **only if an operator intentionally replaces an existing DB**. No automatic clean or repair is performed.
+After this reset ships:
+
+- V1 and V2 are immutable.
+- `database/archive/legacy-flyway` is immutable.
+- New schema/data migrations use `VyyyyMMddHHmmss__action_description.sql` in `db/migration`.
+- Optional same-second migrations use `VyyyyMMddHHmmss_NN__...`, where `NN` is 01–99.
+- Demo/test/performance data remain under `db/seed` and are applied explicitly.
+- Database changes must pass both migration governance and fresh-database startup checks.
