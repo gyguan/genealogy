@@ -13,6 +13,8 @@ server:
   forward-headers-strategy: framework
 
 genealogy:
+  seed:
+    auto-enabled: false
   auth:
     cookie-secure: true
     expose-bearer-token: false

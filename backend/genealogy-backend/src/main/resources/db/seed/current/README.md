@@ -3,7 +3,76 @@
 本目录只针对 `main` 分支**当前已经实现的数据库模型**，不依赖领域模型 V2 的后续 Issue。
 脚本覆盖现有的宗族、支派、人物、关系、字辈、来源、时间线、审核、导入、RBAC、文化资料、迁徙、文化场所和操作日志。
 
-这些脚本是开发、测试和性能环境的显式工具，**不会由 Flyway 自动执行**。
+这些脚本是开发、测试和性能环境的工具，**不会作为 Flyway migration 自动执行**。本地无 Profile / `local` 启动时，应用会在数据库尚无任何宗族数据时自动执行当前场景 Seed；已有宗族数据、CI、测试和生产环境都会跳过。
+
+## 本地自动初始化
+
+应用默认配置：
+
+```yaml
+genealogy:
+  seed:
+    auto-enabled: ${GENEALOGY_SEED_AUTO_ENABLED:true}
+```
+
+满足以下条件时，后端启动完成后会自动初始化测试数据：
+
+- 没有显式 Active Profile，或唯一 Active Profile 为 `local`；
+- 当前不是 CI 环境；
+- `GENEALOGY_SEED_AUTO_ENABLED` 未关闭；
+- `clan` 表中还没有任何宗族数据。
+
+只要数据库已经存在任意宗族，自动初始化就会跳过，**不会清理或覆盖现有业务数据**。生产 `prod/production` 配置强制关闭自动 Seed。
+
+如需在本地临时关闭：
+
+```powershell
+$env:GENEALOGY_SEED_AUTO_ENABLED="false"
+```
+
+手工“清理后重建”仍使用下面的一键 SQL / PowerShell 入口。
+
+## 本地一键初始化
+
+### SQL / psql
+
+在仓库根目录直接执行：
+
+```powershell
+$env:PGPASSWORD="123456"; psql -h localhost -p 5432 -U genealogy -d genealogy -v environment=local -v confirm_reset=RESET_CURRENT_GENEALOGY_DATA -f .\backend\genealogy-backend\src\main\resources\db\seed\current\init-local-test-data.sql
+```
+
+这份入口 SQL 会依次调用：
+
+```text
+00_reset_business_data.sql
+        ↓
+10_seed_current_scenarios.sql
+        ↓
+30_verify_seed_data.sql
+```
+
+### PowerShell
+
+Windows / PowerShell 也可以执行：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\backend\genealogy-backend\src\main\resources\db\seed\current\init-local-test-data.ps1 -ConfirmReset
+```
+
+脚本默认连接：`localhost:5432/genealogy`，数据库用户 `genealogy`，密码 `123456`，依次执行“安全清理 → 全场景 Seed → 完整性校验”。手工清理必须显式确认：PowerShell 传 `-ConfirmReset`，SQL/psql 传 `environment` 和 `confirm_reset`。
+
+初始化后的 5 个演示账号统一使用测试密码 `Genealogy@123`：
+
+| 账号 | 角色 | 主要用途 |
+|---|---|---|
+| `demo_admin` | 宗族管理员 | 全宗族配置、成员授权、完整业务浏览 |
+| `demo_branch_admin` | 支派管理员 | 支派子树权限与隔离验证 |
+| `demo_editor` | 修谱编辑 | 人物、关系、来源编辑与提交审核 |
+| `demo_reviewer` | 审核员 | 待审、通过、驳回场景 |
+| `demo_viewer` | 查看者 | 只读和隐私边界验证 |
+
+场景数据包括 **2 个隔离宗族、20 个虚构人物**，并覆盖支派树、字辈、关系、来源、人物事件、审核、导入、RBAC、文化资料、迁徙、文化场所和操作日志。性能数据不在一键初始化中生成，需要时再显式执行 `20_generate_performance_data.sql`。
 
 ## 文件
 
@@ -65,15 +134,7 @@ psql "$DATABASE_URL" \
 - 文化资料、迁徙事件和文化场所的状态、隐私与敏感等级；
 - 普通日志、高风险拒绝日志和审计追踪字段。
 
-演示账号沿用项目现有初始化账号：
-
-```text
-demo_admin
-demo_branch_admin
-demo_editor
-demo_reviewer
-demo_viewer
-```
+演示账号见本页“本地一键初始化”，5 个账号统一密码为 `Genealogy@123`。
 
 ## 3. 校验数据
 
