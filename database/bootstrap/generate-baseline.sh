@@ -50,6 +50,16 @@ fi
 docker exec "$cid" psql -U genealogy -d genealogy_baseline -v ON_ERROR_STOP=1 -c \
   'DROP VIEW IF EXISTS clan_member; DROP TABLE IF EXISTS member_role_scope_migration_2026071301, clan_member_legacy, role;' \
   >>"$OUT/verify.log"
+# Normalize constraints to the value domains supported by the current Java runtime.
+# These are current-model corrections, not compatibility migrations.
+docker exec "$cid" psql -U genealogy -d genealogy_baseline -v ON_ERROR_STOP=1 -c \
+  "ALTER TABLE import_job DROP CONSTRAINT IF EXISTS chk_import_job_execution_status;
+   ALTER TABLE import_job ADD CONSTRAINT chk_import_job_execution_status
+     CHECK (execution_status IN ('queued','running','paused','retry_wait','completed','partial_failed','failed','cancelled','partial_cancelled','dead_letter'));
+   ALTER TABLE review_quality_check DROP CONSTRAINT IF EXISTS ck_review_quality_scope_type;
+   ALTER TABLE review_quality_check ADD CONSTRAINT ck_review_quality_scope_type
+     CHECK (scope_type IN ('TASK_IDS','REVIEW_TASK','WORKBENCH_SESSION','DRAFT_IDS','QUERY'));" \
+  >>"$OUT/verify.log"
 # pg_dump reconstructs final CREATE TABLE / constraints / indexes, NOT historical ALTER chains.
 docker exec "$cid" pg_dump -U genealogy -d genealogy_baseline \
   --schema-only --no-owner --no-privileges --exclude-table=flyway_schema_history \
