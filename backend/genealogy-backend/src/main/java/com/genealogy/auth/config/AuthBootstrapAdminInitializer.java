@@ -8,7 +8,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -74,10 +73,12 @@ public class AuthBootstrapAdminInitializer implements ApplicationRunner {
                     "event=bootstrap_admin_created username={} result=success action=disable_bootstrap_flag",
                     username
             );
-        } catch (DataIntegrityViolationException exception) {
+        } catch (RuntimeException exception) {
             // Two application instances may race during the very first deployment.
-            // Treat a concurrently-created bootstrap account as success, but do not
-            // swallow unrelated integrity failures.
+            // registerApproved can observe the other instance either before insert
+            // (business duplicate) or during insert (database unique violation).
+            // Only swallow the failure when the configured bootstrap username now
+            // exists; unrelated failures still abort startup.
             if (appUserRepository.existsByUsernameAndDeletedAtIsNull(username)) {
                 log.info(
                         "event=bootstrap_admin_skipped username={} reason=created_concurrently result=skipped",
