@@ -64,7 +64,7 @@ jobs:
         env:
           PGPASSWORD: genealogy_ci_password
         run: |
-          psql -h localhost -U genealogy_ci -d postgres -c "CREATE ROLE genealogy LOGIN PASSWORD 'genealogy_local_only'"
+          psql -h localhost -U genealogy_ci -d postgres -c "CREATE ROLE genealogy LOGIN PASSWORD '123456'"
           psql -h localhost -U genealogy_ci -d postgres -c "CREATE DATABASE genealogy OWNER genealogy"
 
       - name: Verify no-profile direct startup uses local defaults

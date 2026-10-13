@@ -2,7 +2,7 @@
 
 ## 配置原则
 
-后端不在默认配置中保存生产数据库密码、生产密钥或其他生产敏感凭据。本地开发使用与 `docker-compose.yml` 一致的专用默认连接（`genealogy / genealogy_local_only`），并允许通过环境变量或 Git 忽略的本地配置文件覆盖。当前持久化层使用 MyBatis/MyBatis-Plus，所有环境均由 Flyway 管理数据库结构，禁止由 ORM 或运行时代码自动建表。
+后端不在默认配置中保存生产数据库密码、生产密钥或其他生产敏感凭据。本地开发使用与 `docker-compose.yml` 一致的专用默认连接（`genealogy / 123456`），并允许通过环境变量或 Git 忽略的本地配置文件覆盖。当前持久化层使用 MyBatis/MyBatis-Plus，所有环境均由 Flyway 管理数据库结构，禁止由 ORM 或运行时代码自动建表。
 
 ## Profile 职责
 
