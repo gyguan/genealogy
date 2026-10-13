@@ -68,9 +68,10 @@ def java_sql_type_compatible(java_type: str, sql_definition: str) -> bool:
 
 
 
-def parse_entities(schema: dict[str, dict[str, str]], v1_sql: str) -> tuple[list[str], set[str]]:
+def parse_entities(schema: dict[str, dict[str, str]], v1_sql: str) -> tuple[list[str], set[str], dict[str, set[str]]]:
     errors: list[str] = []
     mapped_tables: set[str] = set()
+    mapped_columns: dict[str, set[str]] = {}
 
     for path in sorted(JAVA_ROOT.rglob("entity/*.java")):
         text = path.read_text(encoding="utf-8")
@@ -82,6 +83,7 @@ def parse_entities(schema: dict[str, dict[str, str]], v1_sql: str) -> tuple[list
             continue
         table = table_match.group(1)
         mapped_tables.add(table)
+        mapped_columns.setdefault(table, set())
         if table not in schema:
             errors.append(f"{path.relative_to(ROOT)}: @TableName references missing table {table}")
             continue
@@ -124,6 +126,8 @@ def parse_entities(schema: dict[str, dict[str, str]], v1_sql: str) -> tuple[list
                 )
                 continue
 
+            mapped_columns[table].add(column)
+
             if not java_sql_type_compatible(java_type, schema[table][column]):
                 errors.append(
                     f"{path.relative_to(ROOT)}: Java type {java_type} is incompatible with "
@@ -157,7 +161,7 @@ def parse_entities(schema: dict[str, dict[str, str]], v1_sql: str) -> tuple[list
             "V1 tables without a Java @TableName entity: "
             + ", ".join(sorted(missing_entity_tables))
         )
-    return errors, mapped_tables
+    return errors, mapped_tables, mapped_columns
 
 
 def parse_mapper_tables(schema: dict[str, dict[str, str]]) -> list[str]:
@@ -341,10 +345,28 @@ def main() -> int:
     schema = parse_schema(v1_sql)
 
     errors: list[str] = []
-    entity_errors, mapped_tables = parse_entities(schema, v1_sql)
+    entity_errors, mapped_tables, mapped_columns = parse_entities(schema, v1_sql)
     errors.extend(entity_errors)
     errors.extend(parse_mapper_tables(schema))
     errors.extend(check_java_permission_contract(v2_sql))
+
+    mapper_text = "\n".join(
+        path.read_text(encoding="utf-8", errors="ignore")
+        for path in sorted(MAPPER_ROOT.rglob("*.xml"))
+    )
+    schema_only_columns: dict[str, list[str]] = {}
+    for table, columns in schema.items():
+        unused = [
+            column for column in columns
+            if column not in mapped_columns.get(table, set())
+            and not re.search(rf"\b{re.escape(column)}\b", mapper_text)
+        ]
+        if unused:
+            schema_only_columns[table] = unused
+    if schema_only_columns:
+        print("Schema columns with no Java entity or Mapper XML reference:")
+        for table, columns in sorted(schema_only_columns.items()):
+            print(f"  - {table}: {', '.join(columns)}")
 
     permissions, roles, _ = parse_seed_codes(v2_sql)
     print(
