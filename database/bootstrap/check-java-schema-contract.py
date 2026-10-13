@@ -65,7 +65,8 @@ def parse_entities(schema: dict[str, dict[str, str]], v1_sql: str) -> tuple[list
                 pending_annotations.append(line)
                 continue
             field = re.match(
-                r"private\s+(?!static)([A-Za-z0-9_<>?,.\[\] ]+)\s+([A-Za-z_][A-Za-z0-9_]*)\s*;",
+                r"private\s+(?!static)([A-Za-z0-9_<>?,.\[\] ]+)\s+([A-Za-z_][A-Za-z0-9_]*)"
+                r"(?:\s*=\s*[^;]+)?\s*;",
                 line,
             )
             if not field:
