@@ -8,8 +8,6 @@ if [ ! -d "${MIGRATION_DIR}" ]; then
   exit 1
 fi
 
-echo "Checking Flyway migrations in ${MIGRATION_DIR}"
-
 python3 - "${MIGRATION_DIR}" <<'PY'
 import collections
 import pathlib
@@ -17,51 +15,48 @@ import re
 import sys
 
 root = pathlib.Path(sys.argv[1])
-versioned_pattern = re.compile(r'^V([0-9]+(?:[._][0-9]+)*)__[a-z][a-z0-9_]*\.sql$')
-repeatable_pattern = re.compile(r'^R__[a-z][a-z0-9_]*\.sql$')
-callback_pattern = re.compile(r'^beforeEachMigrate__[a-z][a-z0-9_]*\.sql$')
-versions = collections.defaultdict(list)
-callbacks = []
-repeatables = []
-invalid = []
+baseline = {
+    "V1__create_current_schema.sql",
+    "V2__seed_system_authorization.sql",
+}
+timestamped = re.compile(
+    r"^V(?P<version>\d{14})(?:_(?P<sequence>\d{2}))?"
+    r"__(?P<description>[a-z][a-z0-9]*(?:_[a-z0-9]+)*)\.sql$"
+)
+repeatable = re.compile(r"^R__[a-z][a-z0-9]*(?:_[a-z0-9]+)*\.sql$")
 
-for path in sorted(root.glob('*.sql')):
-    versioned_match = versioned_pattern.match(path.name)
-    if versioned_match:
-        normalized_version = versioned_match.group(1).replace('_', '.')
-        versions[normalized_version].append(path.name)
-        continue
-    if repeatable_pattern.match(path.name):
-        repeatables.append(path.name)
-        continue
-    if callback_pattern.match(path.name):
-        callbacks.append(path.name)
-        continue
-    invalid.append(path.name)
-
+names = sorted(path.name for path in root.glob("*.sql"))
 errors = []
-if invalid:
-    errors.append('Invalid Flyway file names: ' + ', '.join(invalid))
+missing = baseline - set(names)
+if missing:
+    errors.append("Missing baseline migrations: " + ", ".join(sorted(missing)))
 
-duplicates = {version: names for version, names in versions.items() if len(names) > 1}
-if duplicates:
-    for version, names in duplicates.items():
-        errors.append(f'Duplicate Flyway version {version}: ' + ', '.join(names))
+versions = collections.defaultdict(list)
+for name in names:
+    if name in baseline:
+        versions[name.split("__", 1)[0][1:]].append(name)
+        continue
+    match = timestamped.fullmatch(name)
+    if match:
+        if match.group("sequence") == "00":
+            errors.append(f"{name}: sequence must be 01-99")
+        key = match.group("version") + (("." + match.group("sequence")) if match.group("sequence") else "")
+        versions[key].append(name)
+        continue
+    if repeatable.fullmatch(name):
+        continue
+    errors.append(
+        f"{name}: active Flyway directory only accepts the fixed V1/V2 baseline, "
+        "timestamped VyyyyMMddHHmmss[_NN] migrations, or R__ repeatables"
+    )
+
+for version, files in versions.items():
+    if len(files) > 1:
+        errors.append(f"Duplicate Flyway version {version}: " + ", ".join(files))
 
 if errors:
-    print('\n'.join(errors), file=sys.stderr)
-    sys.exit(1)
+    print("\n".join(errors), file=sys.stderr)
+    raise SystemExit(1)
 
-print('Flyway migration check passed.')
-print('Versions:')
-for version in sorted(versions, key=lambda item: [int(part) for part in item.split('.')]):
-    print(f'  V{version}: {versions[version][0]}')
-if repeatables:
-    print('Repeatables:')
-    for name in repeatables:
-        print(f'  {name}')
-if callbacks:
-    print('Callbacks:')
-    for name in callbacks:
-        print(f'  {name}')
+print(f"Flyway migration check passed: {len(names)} active SQL file(s).")
 PY
