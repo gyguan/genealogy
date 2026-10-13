@@ -133,13 +133,14 @@ def parse_mapper_tables(schema: dict[str, dict[str, str]]) -> list[str]:
         ctes = set(
             m.group(1).lower()
             for m in re.finditer(
-                r"(?:WITH(?:\s+RECURSIVE)?|,)\s*([A-Za-z_][A-Za-z0-9_]*)\s+AS\s*\(",
+                r"(?:WITH(?:\s+RECURSIVE)?|,)\s*([A-Za-z_][A-Za-z0-9_]*)"
+                r"(?:\s*\([^)]*\))?\s+AS\s*\(",
                 text,
                 re.IGNORECASE,
             )
         )
         scan_text = re.sub(
-            r"\\bFOR\\s+UPDATE(?:\\s+SKIP\\s+LOCKED)?\\b",
+            r"\bFOR\s+UPDATE(?:\s+SKIP\s+LOCKED)?\b",
             "",
             text,
             flags=re.IGNORECASE,
@@ -173,6 +174,15 @@ def parse_mapper_tables(schema: dict[str, dict[str, str]]) -> list[str]:
         aliases = set(
             m.group(1)
             for m in re.finditer(r"\bAS\s+([A-Za-z_][A-Za-z0-9_]*)", text, re.IGNORECASE)
+        )
+        aliases.update(
+            m.group(1)
+            for m in re.finditer(
+                r"\b(?:[A-Za-z_][A-Za-z0-9_]*\.)?[A-Za-z_][A-Za-z0-9_]*"
+                r"(?:::[A-Za-z_][A-Za-z0-9_]*)?\s+([A-Za-z_][A-Za-z0-9_]*)\s*(?:,|$)",
+                text,
+                re.MULTILINE,
+            )
         )
         available = aliases.copy()
         for table in actual_tables:
