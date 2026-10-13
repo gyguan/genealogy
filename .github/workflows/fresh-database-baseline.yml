@@ -37,6 +37,8 @@ jobs:
         run: |
           cd backend/genealogy-backend
           bash scripts/check-flyway-migrations.sh
+      - name: Check Java/MyBatis database contract
+        run: python3 database/bootstrap/check-java-schema-contract.py
       - name: Rebuild and boot clean PostgreSQL baseline
         run: bash database/bootstrap/generate-baseline.sh
       - name: Verify checked-in V1/V2 exactly match rebuilt baseline
