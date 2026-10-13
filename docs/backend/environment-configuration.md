@@ -13,7 +13,7 @@
 | `test` | 自动化测试 | `TEST_DB_*` 或 `DB_*` 注入的隔离数据库 | 启用 | INFO；测试 Token 仅限测试环境 |
 | `prod`（兼容别名 `production`） | 生产部署 | 必须通过 Secret 注入 `DB_URL`、`DB_USERNAME`、`DB_PASSWORD` | 启用 | INFO；Secure Cookie；禁止暴露 Bearer/Reset Token |
 
-本地默认连接只在 Spring 的 `default` 或 `local` profile 下生效，并在该本地配置段中可选导入 `./config/application-local.yml`。该文件用于开发机私有覆盖，不提交 Git；仓库提供 `config/application-local.example.yml` 作为模板。显式激活 `prod` 或兼容别名 `production` 时，不会加载本地默认连接；`application-prod.yml` 只接受注入的数据库参数，并由 `ProductionEnvironmentValidator` 强制检查三个数据库 Secret。
+`application.yml` 直接提供本地开发默认连接，并可选导入 `./config/application-local.yml`，因此 IDEA 在没有显式 Active profiles 时也可以直接启动。该私有文件不提交 Git；仓库提供 `config/application-local.example.yml` 作为模板。生产别名 `production` 通过 profile group 自动包含 `prod`，随后 `application-prod.yml` 会覆盖本地 datasource 默认值并仅接受注入的数据库参数；`ProductionEnvironmentValidator` 同时强制检查三个数据库 Secret，生产环境不会回退到本地凭据。
 
 ## 环境变量
 
@@ -113,9 +113,10 @@ export GENEALOGY_AUTH_BOOTSTRAP_ADMIN_DISPLAY_NAME='<display-name>'
 
 CI 的 `Backend Configuration Governance` 工作流自动验证：
 
-1. 生产 Profile 缺少 Secret 时启动失败。
-2. 空数据库可从 V1/V2 完成初始化并启动应用。
-3. 活动迁移链可从当前前一版本升级到最新版本（当前即 V1 → V2），不承诺 archive 中旧数据库升级。
-4. 数据库初始化后应用可正常启动并通过后端配置校验。
+1. 不指定 Profile 时，应用可使用本地默认 datasource 直接启动并完成 Flyway 初始化。
+2. 生产 Profile 缺少 Secret 时启动失败。
+3. 空数据库可从 V1/V2 完成初始化并启动应用。
+4. 活动迁移链可从当前前一版本升级到最新版本（当前即 V1 → V2），不承诺 archive 中旧数据库升级。
+5. 数据库初始化后应用可正常启动并通过后端配置校验。
 
 另由 `Fresh Database Baseline Check` 验证 V1/V2 可重复生成、byte-for-byte 一致，以及 Java/MyBatis 表、字段、类型、主键、枚举值域和 RBAC 种子契约。
