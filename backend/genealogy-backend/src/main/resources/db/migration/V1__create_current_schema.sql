@@ -1609,7 +1609,7 @@ CREATE TABLE public.import_job (
     CONSTRAINT chk_import_job_execution_counts CHECK (((cursor_row_no >= 0) AND (processed_count >= 0) AND (published_count >= 0) AND (chunk_size > 0) AND (execution_retry_count >= 0) AND (execution_max_retries > 0))),
     CONSTRAINT chk_import_job_execution_mode CHECK (((execution_mode)::text = ANY ((ARRAY['sync'::character varying, 'async'::character varying])::text[]))),
     CONSTRAINT chk_import_job_execution_stage CHECK (((execution_stage)::text = ANY ((ARRAY['queued'::character varying, 'parsing'::character varying, 'drafting'::character varying, 'ready_for_review'::character varying, 'publishing'::character varying, 'completed'::character varying, 'failed'::character varying, 'cancelled'::character varying])::text[]))),
-    CONSTRAINT chk_import_job_execution_status CHECK (((execution_status)::text = ANY ((ARRAY['queued'::character varying, 'running'::character varying, 'paused'::character varying, 'retry_wait'::character varying, 'completed'::character varying, 'failed'::character varying, 'cancelled'::character varying, 'dead_letter'::character varying])::text[]))),
+    CONSTRAINT chk_import_job_execution_status CHECK (((execution_status)::text = ANY ((ARRAY['queued'::character varying, 'running'::character varying, 'paused'::character varying, 'retry_wait'::character varying, 'completed'::character varying, 'partial_failed'::character varying, 'failed'::character varying, 'cancelled'::character varying, 'partial_cancelled'::character varying, 'dead_letter'::character varying])::text[]))),
     CONSTRAINT chk_import_job_file_format CHECK (((file_format)::text = ANY ((ARRAY['csv'::character varying, 'xlsx'::character varying])::text[]))),
     CONSTRAINT chk_import_job_processing_status CHECK (((processing_status)::text = ANY ((ARRAY['processing'::character varying, 'correction_required'::character varying, 'ready_for_review'::character varying])::text[]))),
     CONSTRAINT chk_import_job_requested_action CHECK (((requested_action IS NULL) OR ((requested_action)::text = ANY ((ARRAY['pause'::character varying, 'cancel'::character varying])::text[])))),
@@ -2896,7 +2896,7 @@ CREATE TABLE public.review_quality_check (
     failure_code character varying(80),
     failure_message character varying(500),
     CONSTRAINT ck_review_quality_mode CHECK (((mode)::text = ANY ((ARRAY['INCREMENTAL'::character varying, 'FULL'::character varying, 'REVIEW_GATE'::character varying])::text[]))),
-    CONSTRAINT ck_review_quality_scope_type CHECK (((scope_type)::text = ANY ((ARRAY['TASK_IDS'::character varying, 'QUERY'::character varying])::text[]))),
+    CONSTRAINT ck_review_quality_scope_type CHECK (((scope_type)::text = ANY ((ARRAY['TASK_IDS'::character varying, 'REVIEW_TASK'::character varying, 'WORKBENCH_SESSION'::character varying, 'DRAFT_IDS'::character varying, 'QUERY'::character varying])::text[]))),
     CONSTRAINT ck_review_quality_status CHECK (((status)::text = ANY ((ARRAY['QUEUED'::character varying, 'RUNNING'::character varying, 'PASSED'::character varying, 'ISSUES_FOUND'::character varying, 'FAILED'::character varying])::text[])))
 );
 
