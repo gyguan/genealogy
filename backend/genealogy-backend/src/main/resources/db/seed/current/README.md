@@ -7,7 +7,27 @@
 
 ## 本地一键初始化
 
-Windows / PowerShell 在仓库根目录执行：
+### SQL / psql
+
+在仓库根目录直接执行：
+
+```powershell
+$env:PGPASSWORD="123456"; psql -h localhost -p 5432 -U genealogy -d genealogy -f .\backend\genealogy-backend\src\main\resources\db\seed\current\init-local-test-data.sql
+```
+
+这份入口 SQL 会依次调用：
+
+```text
+00_reset_business_data.sql
+        ↓
+10_seed_current_scenarios.sql
+        ↓
+30_verify_seed_data.sql
+```
+
+### PowerShell
+
+Windows / PowerShell 也可以执行：
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\backend\genealogy-backend\src\main\resources\db\seed\current\init-local-test-data.ps1
