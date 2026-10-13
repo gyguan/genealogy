@@ -2,12 +2,6 @@ spring:
   config:
     activate:
       on-profile: local
-  datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/genealogy}
-    username: ${DB_USERNAME:genealogy}
-    password: ${DB_PASSWORD:genealogy_local_only}
-  flyway:
-    enabled: true
 
 genealogy:
   auth:

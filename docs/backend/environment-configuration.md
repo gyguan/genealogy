@@ -11,9 +11,9 @@
 | 未指定 | 默认本地开发 / IDEA 直接运行 | `application.yml` 本地默认值，可被环境变量或 `config/application-local.yml` 覆盖 | 启用 | 保守默认；不主动暴露测试 Token |
 | `local` | 兼容已有本地启动配置 / 本地调试 | 与默认本地连接一致，也可通过环境变量覆盖 | 启用 | DEBUG；允许显式开启测试 Token；Cookie 非 Secure |
 | `test` | 自动化测试 | `TEST_DB_*` 或 `DB_*` 注入的隔离数据库 | 启用 | INFO；测试 Token 仅限测试环境 |
-| `prod` | 生产部署 | 必须通过 Secret 注入 `DB_URL`、`DB_USERNAME`、`DB_PASSWORD` | 启用 | INFO；Secure Cookie；禁止暴露 Bearer/Reset Token |
+| `prod`（兼容别名 `production`） | 生产部署 | 必须通过 Secret 注入 `DB_URL`、`DB_USERNAME`、`DB_PASSWORD` | 启用 | INFO；Secure Cookie；禁止暴露 Bearer/Reset Token |
 
-`application.yml` 会可选导入 `./config/application-local.yml`。该文件用于开发机私有覆盖，不提交 Git；仓库提供 `config/application-local.example.yml` 作为模板。显式激活 `prod` 时，`application-prod.yml` 会覆盖本地默认连接，并由 `ProductionEnvironmentValidator` 强制检查三个数据库 Secret，因此生产配置不会回退到本地默认凭据。
+本地默认连接只在 Spring 的 `default` 或 `local` profile 下生效，并在该本地配置段中可选导入 `./config/application-local.yml`。该文件用于开发机私有覆盖，不提交 Git；仓库提供 `config/application-local.example.yml` 作为模板。显式激活 `prod` 或兼容别名 `production` 时，不会加载本地默认连接；`application-prod.yml` 只接受注入的数据库参数，并由 `ProductionEnvironmentValidator` 强制检查三个数据库 Secret。
 
 ## 环境变量
 

@@ -18,7 +18,10 @@
 最低要求：
 
 ```bash
-SPRING_PROFILES_ACTIVE=production
+SPRING_PROFILES_ACTIVE=prod
+DB_URL=jdbc:postgresql://postgres.internal:5432/genealogy
+DB_USERNAME=genealogy_app
+DB_PASSWORD=<injected-by-secret-manager>
 GENEALOGY_AUTH_PUBLIC_REGISTRATION_ENABLED=false
 GENEALOGY_AUTH_DEMO_MODE_ENABLED=false
 GENEALOGY_AUTH_EXPOSE_BEARER_TOKEN=false
@@ -29,7 +32,7 @@ GENEALOGY_AUTH_RESET_DELIVERY_URL=https://notification-gateway.example.internal/
 GENEALOGY_AUTH_RESET_BASE_URL=https://genealogy.example.com/?auth=reset&resetToken=
 ```
 
-应用启动时会检查生产安全配置。生产环境出现以下任一情况时拒绝启动：
+应用启动时会检查生产安全配置。标准生产 Profile 为 `prod`；为兼容历史部署，`production` 作为等价别名同样加载生产配置并执行 Secret/安全校验。生产环境出现以下任一情况时拒绝启动：
 
 - 开启演示模式；
 - 暴露密码重置 Token；

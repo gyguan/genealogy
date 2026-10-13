@@ -2,14 +2,9 @@ server:
   port: ${SERVER_PORT:8080}
 
 spring:
-  config:
-    import: optional:file:./config/application-local.yml
   application:
     name: genealogy-backend
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/genealogy}
-    username: ${DB_USERNAME:genealogy}
-    password: ${DB_PASSWORD:genealogy_local_only}
     driver-class-name: org.postgresql.Driver
   flyway:
     enabled: true
@@ -57,7 +52,6 @@ management:
       percentiles-histogram:
         genealogy.tree.query.duration: true
         genealogy.import.duration: true
-
 
 genealogy:
   attachment:
@@ -108,3 +102,14 @@ logging:
   level:
     root: INFO
     com.genealogy: INFO
+
+---
+spring:
+  config:
+    activate:
+      on-profile: "default | local"
+    import: optional:file:./config/application-local.yml
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/genealogy}
+    username: ${DB_USERNAME:genealogy}
+    password: ${DB_PASSWORD:genealogy_local_only}

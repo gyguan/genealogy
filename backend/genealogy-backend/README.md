@@ -58,7 +58,7 @@ IDEA 可直接运行 `GenealogyApplication`，无需设置 `Active profiles=loca
 1. 使用 `DB_URL`、`DB_USERNAME`、`DB_PASSWORD` 环境变量；
 2. 将 `config/application-local.example.yml` 复制为 `config/application-local.yml`，该文件已被 Git 忽略并由 `application.yml` 自动导入。
 
-原有 `local` profile 继续保留，用于兼容已有启动配置以及启用本地 DEBUG / 测试 Token 行为；它不再是获得 DataSource 配置的前提。生产环境仍必须显式使用 `prod` profile，并通过 Secret 注入数据库凭据。
+原有 `local` profile 继续保留，用于兼容已有启动配置以及启用本地 DEBUG / 测试 Token 行为；它不再是获得 DataSource 配置的前提。本地默认连接仅对 `default/local` 生效。生产环境必须显式使用 `prod`（兼容别名 `production`）并通过 Secret 注入数据库凭据，不会回退到本地默认值。
 
 健康检查与 OpenAPI：
 
