@@ -53,6 +53,33 @@ The script:
 
 CI additionally requires the generated V1/V2 files to be byte-for-byte identical to the checked-in active migrations.
 
+CI also runs `database/bootstrap/check-java-schema-contract.py` to verify the current Java/MyBatis runtime against V1/V2, including:
+
+- every active table has a Java entity mapping;
+- BaseMapper entities declare explicit `@TableName`;
+- entity columns and Java/PostgreSQL types match;
+- `@TableId` / auto-increment sequence contracts match;
+- Mapper XML does not reference missing tables or result columns;
+- Java state enums remain accepted by database CHECK constraints;
+- Java role/permission constants exist in the RBAC seed.
+
+## First account on an empty installation
+
+V2 intentionally does **not** create demo users or a hard-coded administrator. Public registration remains disabled by default and is forbidden in the production profile.
+
+For the first deployment only, provide a bootstrap account explicitly:
+
+```text
+GENEALOGY_AUTH_BOOTSTRAP_ADMIN_ENABLED=true
+GENEALOGY_AUTH_BOOTSTRAP_ADMIN_USERNAME=<initial-login>
+GENEALOGY_AUTH_BOOTSTRAP_ADMIN_PASSWORD=<12-to-64-character-secret>
+GENEALOGY_AUTH_BOOTSTRAP_ADMIN_DISPLAY_NAME=<display-name>
+```
+
+The application creates this account only when `app_user` is empty. The password is processed by the normal password hashing path and is never stored in V1/V2. After login, create the first clan through the normal API/UI; the existing clan creation flow grants that user the built-in `clan_admin` role for the new clan.
+
+Disable `GENEALOGY_AUTH_BOOTSTRAP_ADMIN_ENABLED` after the first account is created. If any user already exists, bootstrap is skipped.
+
 ## Future schema changes
 
 After this reset ships:
