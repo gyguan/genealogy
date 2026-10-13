@@ -1,0 +1,54 @@
+name: Fresh Database Baseline Check
+
+on:
+  pull_request:
+    paths:
+      - 'database/bootstrap/**'
+      - 'database/archive/legacy-flyway/**'
+      - 'backend/genealogy-backend/src/main/resources/db/migration/**'
+      - 'backend/genealogy-backend/src/main/resources/application.yml'
+      - '.github/workflows/fresh-database-baseline.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'database/bootstrap/**'
+      - 'database/archive/legacy-flyway/**'
+      - 'backend/genealogy-backend/src/main/resources/db/migration/**'
+      - 'backend/genealogy-backend/src/main/resources/application.yml'
+      - '.github/workflows/fresh-database-baseline.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-fresh-baseline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+          cache-dependency-path: backend/genealogy-backend/pom.xml
+      - name: Check active Flyway file set
+        run: |
+          cd backend/genealogy-backend
+          bash scripts/check-flyway-migrations.sh
+      - name: Check Java/MyBatis database contract
+        run: python3 database/bootstrap/check-java-schema-contract.py
+      - name: Rebuild and boot clean PostgreSQL baseline
+        run: bash database/bootstrap/generate-baseline.sh
+      - name: Verify checked-in V1/V2 exactly match rebuilt baseline
+        run: |
+          cmp database/bootstrap/generated/V1__create_current_schema.sql backend/genealogy-backend/src/main/resources/db/migration/V1__create_current_schema.sql
+          cmp database/bootstrap/generated/V2__seed_system_authorization.sql backend/genealogy-backend/src/main/resources/db/migration/V2__seed_system_authorization.sql
+      - name: Upload verification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fresh-database-baseline
+          path: database/bootstrap/generated/
+          retention-days: 7

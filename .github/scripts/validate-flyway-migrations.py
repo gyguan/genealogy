@@ -1,59 +1,41 @@
 #!/usr/bin/env python3
-"""Validate Flyway migration naming and immutable-history rules.
+"""Validate the post-consolidation Flyway layout.
 
-The validator is incremental:
-- Existing duplicate versions in the base branch are reported as legacy debt.
-- A PR fails when it introduces/worsens duplicates or violates new rules.
-- A dedicated governance PR may reduce an existing duplicate version to one
-  canonical migration only when it adds enough higher-version forward
-  migrations to preserve the removed SQL responsibilities.
-- SQL callbacks are permitted only through an explicit supported event name and
-  an action-oriented lowercase description.
+One transition is intentionally supported:
+- a legacy base branch with many active migrations;
+- a head branch with only the new V1/V2 baseline;
+- every legacy active SQL file preserved under database/archive/legacy-flyway.
+
+After that reset is merged, V1/V2 and the legacy archive are immutable and all
+new versioned migrations must use Beijing timestamp versions.
 """
 
 from __future__ import annotations
 
 import argparse
-import collections
-import datetime as dt
 import pathlib
 import re
 import subprocess
 import sys
 from dataclasses import dataclass
-from typing import Iterable
 
-MIGRATION_DIR = pathlib.PurePosixPath(
+ACTIVE_DIR = pathlib.PurePosixPath(
     "backend/genealogy-backend/src/main/resources/db/migration"
 )
-
+ARCHIVE_DIR = pathlib.PurePosixPath("database/archive/legacy-flyway")
+BASELINE_NAMES = {
+    "V1__create_current_schema.sql",
+    "V2__seed_system_authorization.sql",
+}
 NEW_VERSIONED_RE = re.compile(
     r"^V(?P<timestamp>\d{14})(?:_(?P<sequence>\d{2}))?"
     r"__(?P<description>[a-z][a-z0-9]*(?:_[a-z0-9]+)*)\.sql$"
 )
-ANY_VERSIONED_RE = re.compile(
-    r"^V(?P<version>[0-9][0-9._]*)__"
-    r"(?P<description>.+)\.sql$"
-)
-REPEATABLE_RE = re.compile(
-    r"^R__(?P<description>[a-z][a-z0-9]*(?:_[a-z0-9]+)*)\.sql$"
-)
-CALLBACK_RE = re.compile(
-    r"^(?P<event>beforeEachMigrate)__"
-    r"(?P<description>[a-z][a-z0-9]*(?:_[a-z0-9]+)*)\.sql$"
-)
+ANY_VERSIONED_RE = re.compile(r"^V(?P<version>[0-9][0-9._]*)__.+\.sql$")
+REPEATABLE_RE = re.compile(r"^R__[a-z][a-z0-9]*(?:_[a-z0-9]+)*\.sql$")
 ALLOWED_ACTIONS = {
-    "create",
-    "add",
-    "alter",
-    "rename",
-    "backfill",
-    "migrate",
-    "normalize",
-    "fix",
-    "rebuild",
-    "drop",
-    "refresh",
+    "create", "add", "alter", "rename", "backfill", "migrate",
+    "normalize", "fix", "rebuild", "drop", "refresh",
 }
 
 
@@ -65,59 +47,44 @@ class Change:
 
 
 def git(*args: str) -> str:
-    completed = subprocess.run(
+    result = subprocess.run(
         ["git", *args],
         check=False,
         text=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     )
-    if completed.returncode != 0:
-        command = " ".join(["git", *args])
+    if result.returncode:
         raise RuntimeError(
-            f"Command failed ({completed.returncode}): {command}\n"
-            f"{completed.stderr.strip()}"
+            f"git {' '.join(args)} failed ({result.returncode}): "
+            f"{result.stderr.strip()}"
         )
-    return completed.stdout
+    return result.stdout
 
 
-def migration_paths_at(ref: str) -> list[str]:
-    output = git("ls-tree", "-r", "--name-only", ref, "--", str(MIGRATION_DIR))
-    return [
-        line.strip()
-        for line in output.splitlines()
-        if line.strip().endswith(".sql")
-    ]
+def sql_paths_at(ref: str, directory: pathlib.PurePosixPath) -> list[str]:
+    output = git("ls-tree", "-r", "--name-only", ref, "--", str(directory))
+    return [line.strip() for line in output.splitlines() if line.strip().endswith(".sql")]
 
 
-def parse_changes(base_ref: str) -> list[Change]:
+def changes_under(base_ref: str, directory: pathlib.PurePosixPath) -> list[Change]:
     output = git(
-        "diff",
-        "--name-status",
-        "--find-renames",
-        f"{base_ref}...HEAD",
-        "--",
-        str(MIGRATION_DIR),
+        "diff", "--name-status", "--find-renames",
+        f"{base_ref}...HEAD", "--", str(directory)
     )
     changes: list[Change] = []
-    for raw_line in output.splitlines():
-        if not raw_line.strip():
+    for line in output.splitlines():
+        if not line.strip():
             continue
-        parts = raw_line.split("\t")
+        parts = line.split("\t")
         status = parts[0]
         code = status[0]
         if code in {"R", "C"}:
-            if len(parts) != 3:
-                raise RuntimeError(f"Unexpected rename/copy record: {raw_line}")
-            changes.append(Change(status=status, old_path=parts[1], new_path=parts[2]))
-        elif len(parts) == 2:
-            path = parts[1]
-            if code == "D":
-                changes.append(Change(status=status, old_path=path, new_path=None))
-            else:
-                changes.append(Change(status=status, old_path=None, new_path=path))
+            changes.append(Change(status, parts[1], parts[2]))
+        elif code == "D":
+            changes.append(Change(status, parts[1], None))
         else:
-            raise RuntimeError(f"Unexpected git diff record: {raw_line}")
+            changes.append(Change(status, None, parts[1]))
     return changes
 
 
@@ -125,245 +92,118 @@ def filename(path: str) -> str:
     return pathlib.PurePosixPath(path).name
 
 
-def is_versioned(path: str | None) -> bool:
-    return bool(path and ANY_VERSIONED_RE.fullmatch(filename(path)))
-
-
-def is_repeatable(path: str | None) -> bool:
-    return bool(path and filename(path).startswith("R__"))
-
-
-def is_callback(path: str | None) -> bool:
-    return bool(path and CALLBACK_RE.fullmatch(filename(path)))
-
-
-def normalized_version(name: str) -> tuple[int, ...] | None:
+def version_tuple(name: str) -> tuple[int, ...] | None:
     match = ANY_VERSIONED_RE.fullmatch(name)
     if not match:
         return None
-    components = re.split(r"[._]", match.group("version"))
-    return tuple(int(component) for component in components)
+    return tuple(int(part) for part in re.split(r"[._]", match.group("version")))
 
 
-def versions_by_key(paths: Iterable[str]) -> dict[tuple[int, ...], list[str]]:
-    grouped: dict[tuple[int, ...], list[str]] = collections.defaultdict(list)
-    for path in paths:
-        version = normalized_version(filename(path))
-        if version is not None:
-            grouped[version].append(path)
-    return dict(grouped)
-
-
-def format_version(version: tuple[int, ...]) -> str:
-    return ".".join(str(component) for component in version)
-
-
-def validate_description(description: str, name: str, errors: list[str]) -> None:
-    action = description.split("_", 1)[0]
-    if action not in ALLOWED_ACTIONS:
-        errors.append(
-            f"{name}: description must start with one of "
-            f"{', '.join(sorted(ALLOWED_ACTIONS))}; got '{action}'"
-        )
-
-
-def validate_new_versioned(
-    path: str,
-    base_max_version: tuple[int, ...] | None,
-    errors: list[str],
-) -> None:
-    name = filename(path)
+def validate_new_name(name: str, errors: list[str]) -> tuple[int, ...] | None:
     match = NEW_VERSIONED_RE.fullmatch(name)
     if not match:
         errors.append(
             f"{name}: new versioned migration must match "
             "VyyyyMMddHHmmss[_NN]__action_object_detail.sql"
         )
-        return
-
-    timestamp = match.group("timestamp")
-    sequence = match.group("sequence")
-    try:
-        dt.datetime.strptime(timestamp, "%Y%m%d%H%M%S")
-    except ValueError:
-        errors.append(f"{name}: invalid Beijing timestamp '{timestamp}'")
-
-    if sequence == "00":
-        errors.append(f"{name}: optional sequence must be 01-99, not 00")
-
-    validate_description(match.group("description"), name, errors)
-
-    version = normalized_version(name)
-    if version is None:
-        errors.append(f"{name}: unable to parse Flyway version")
-    elif base_max_version is not None and version <= base_max_version:
+        return None
+    if match.group("sequence") == "00":
+        errors.append(f"{name}: optional sequence must be 01-99")
+    action = match.group("description").split("_", 1)[0]
+    if action not in ALLOWED_ACTIONS:
         errors.append(
-            f"{name}: version {format_version(version)} must be greater than "
-            f"base maximum {format_version(base_max_version)}; regenerate the "
-            "Beijing timestamp before merge"
+            f"{name}: description must start with one of "
+            + ", ".join(sorted(ALLOWED_ACTIONS))
         )
-
-
-def validate_repeatable(path: str, errors: list[str]) -> None:
-    name = filename(path)
-    match = REPEATABLE_RE.fullmatch(name)
-    if not match:
-        errors.append(
-            f"{name}: repeatable migration must match "
-            "R__action_object_detail.sql using lowercase snake_case"
-        )
-        return
-    validate_description(match.group("description"), name, errors)
-
-
-def validate_callback(path: str, errors: list[str]) -> None:
-    name = filename(path)
-    match = CALLBACK_RE.fullmatch(name)
-    if not match:
-        errors.append(
-            f"{name}: callback must match "
-            "beforeEachMigrate__action_object_detail.sql"
-        )
-        return
-    validate_description(match.group("description"), name, errors)
+    return version_tuple(name)
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--base-ref",
-        default="origin/main",
-        help="Git ref used as the pull-request base (default: origin/main)",
-    )
+    parser.add_argument("--base-ref", default="origin/main")
     args = parser.parse_args()
 
     try:
-        base_paths = migration_paths_at(args.base_ref)
-        head_paths = migration_paths_at("HEAD")
-        changes = parse_changes(args.base_ref)
+        base_active = sql_paths_at(args.base_ref, ACTIVE_DIR)
+        head_active = sql_paths_at("HEAD", ACTIVE_DIR)
+        head_archive = sql_paths_at("HEAD", ARCHIVE_DIR)
+        active_changes = changes_under(args.base_ref, ACTIVE_DIR)
+        archive_changes = changes_under(args.base_ref, ARCHIVE_DIR)
     except RuntimeError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 2
 
     errors: list[str] = []
-    warnings: list[str] = []
+    base_names = {filename(path) for path in base_active}
+    head_names = {filename(path) for path in head_active}
+    archive_names = {filename(path) for path in head_archive}
 
-    base_versions = versions_by_key(base_paths)
-    head_versions = versions_by_key(head_paths)
-    base_max_version = max(base_versions, default=None)
-
-    forward_migrations: set[str] = set()
-    for change in changes:
-        code = change.status[0]
-        if code not in {"A", "C", "R"} or not is_versioned(change.new_path):
-            continue
-        new_name = filename(change.new_path or "")
-        if not NEW_VERSIONED_RE.fullmatch(new_name):
-            continue
-        new_version = normalized_version(new_name)
-        if new_version is not None and (
-            base_max_version is None or new_version > base_max_version
-        ):
-            forward_migrations.add(change.new_path or "")
-
-    duplicate_reductions: dict[tuple[int, ...], int] = {}
-    for version, base_paths_for_version in base_versions.items():
-        base_count = len(base_paths_for_version)
-        head_count = len(head_versions.get(version, []))
-        if base_count > 1 and 1 <= head_count < base_count:
-            duplicate_reductions[version] = base_count - head_count
-
-    removed_duplicate_count = sum(duplicate_reductions.values())
-    has_forward_replacements = (
-        removed_duplicate_count > 0
-        and len(forward_migrations) >= removed_duplicate_count
-    )
-
-    for change in changes:
-        code = change.status[0]
-
-        # Versioned migrations are immutable once present in the base branch.
-        # The only exception is a dedicated cleanup that reduces an already
-        # duplicated base version to one canonical migration and adds at least
-        # one new higher-version forward migration per removed duplicate file.
-        if change.old_path and is_versioned(change.old_path):
-            if code in {"D", "R"}:
-                old_version = normalized_version(filename(change.old_path))
-                if (
-                    old_version in duplicate_reductions
-                    and has_forward_replacements
-                ):
-                    warnings.append(
-                        f"resolving legacy duplicate version "
-                        f"{format_version(old_version or ())}: "
-                        f"{filename(change.old_path)} is replaced by a "
-                        "higher-version forward migration"
-                    )
-                else:
-                    errors.append(
-                        f"{filename(change.old_path)}: existing versioned migration "
-                        "must not be deleted or renamed; add a forward compensation"
-                    )
-
-        if code == "M" and change.new_path and is_versioned(change.new_path):
+    baseline_reset = len(base_active) > 2 and head_names == BASELINE_NAMES
+    if baseline_reset:
+        missing_archive = base_names - archive_names
+        if missing_archive:
             errors.append(
-                f"{filename(change.new_path)}: existing versioned migration "
-                "must not be modified; add a new migration"
+                "baseline reset must archive every former active migration; missing: "
+                + ", ".join(sorted(missing_archive))
             )
+        if errors:
+            print("Flyway baseline reset validation failed:", file=sys.stderr)
+            for error in errors:
+                print(f"  - {error}", file=sys.stderr)
+            return 1
+        print(
+            f"Flyway baseline reset passed: {len(base_active)} legacy SQL files "
+            f"archived; active runtime reduced to V1/V2."
+        )
+        return 0
 
-        if change.new_path is None:
-            continue
+    missing_baseline = BASELINE_NAMES - head_names
+    if missing_baseline:
+        errors.append("missing active baseline: " + ", ".join(sorted(missing_baseline)))
 
-        name = filename(change.new_path)
-        if code in {"A", "C", "R"}:
-            if name.startswith("V"):
-                validate_new_versioned(change.new_path, base_max_version, errors)
-            elif name.startswith("R__"):
-                validate_repeatable(change.new_path, errors)
-            elif CALLBACK_RE.fullmatch(name):
-                validate_callback(change.new_path, errors)
-            else:
-                errors.append(
-                    f"{name}: SQL files in the Flyway directory must use V...__..., "
-                    "R__..., or a supported callback naming pattern"
-                )
-        elif code == "M" and is_repeatable(change.new_path):
-            validate_repeatable(change.new_path, errors)
-        elif code == "M" and is_callback(change.new_path):
-            validate_callback(change.new_path, errors)
-
-    # Existing duplicates are legacy debt; fail only when this PR introduces or
-    # increases a duplicate version. A reduction to exactly one canonical file
-    # is allowed only by the guarded forward-replacement rule above.
-    all_versions = sorted(set(base_versions) | set(head_versions))
-    for version in all_versions:
-        base_count = len(base_versions.get(version, []))
-        head_count = len(head_versions.get(version, []))
-        if head_count > 1 and head_count > base_count:
-            errors.append(
-                f"Flyway version {format_version(version)} is duplicated in HEAD: "
-                + ", ".join(filename(path) for path in head_versions[version])
-            )
-        elif base_count > 1 and head_count == base_count:
-            warnings.append(
-                f"legacy duplicate version {format_version(version)} remains: "
-                + ", ".join(filename(path) for path in head_versions.get(version, []))
-            )
-        elif base_count > 1 and head_count == 0:
-            errors.append(
-                f"Flyway version {format_version(version)} removed all canonical migrations"
-            )
-
-    if removed_duplicate_count > 0 and not has_forward_replacements:
+    if archive_changes:
         errors.append(
-            "legacy duplicate cleanup must add at least one higher-version "
-            "forward migration for each removed duplicate file"
+            "database/archive/legacy-flyway is immutable after baseline consolidation"
         )
 
-    if warnings:
-        print("Warnings:")
-        for warning in warnings:
-            print(f"  - {warning}")
+    base_versions = [
+        version_tuple(filename(path))
+        for path in base_active
+        if version_tuple(filename(path)) is not None
+    ]
+    base_max = max(base_versions, default=None)
+
+    for change in active_changes:
+        code = change.status[0]
+        if change.old_path and filename(change.old_path) in BASELINE_NAMES:
+            if code in {"M", "D", "R"}:
+                errors.append(
+                    f"{filename(change.old_path)}: baseline V1/V2 is immutable after consolidation"
+                )
+                continue
+        if change.old_path and ANY_VERSIONED_RE.fullmatch(filename(change.old_path)):
+            if code in {"M", "D", "R"}:
+                errors.append(
+                    f"{filename(change.old_path)}: existing versioned migration is immutable"
+                )
+
+        if not change.new_path or code not in {"A", "C", "R"}:
+            continue
+        name = filename(change.new_path)
+        if name in BASELINE_NAMES:
+            errors.append(f"{name}: baseline file may not be re-added or replaced")
+        elif name.startswith("V"):
+            version = validate_new_name(name, errors)
+            if version is not None and base_max is not None and version <= base_max:
+                errors.append(
+                    f"{name}: version must be greater than current maximum "
+                    + ".".join(str(v) for v in base_max)
+                )
+        elif name.startswith("R__"):
+            if not REPEATABLE_RE.fullmatch(name):
+                errors.append(f"{name}: invalid repeatable migration name")
+        else:
+            errors.append(f"{name}: unsupported SQL file in active Flyway directory")
 
     if errors:
         print("Flyway migration governance failed:", file=sys.stderr)
@@ -372,14 +212,6 @@ def main() -> int:
         return 1
 
     print("Flyway migration governance passed.")
-    if duplicate_reductions:
-        reduced = ", ".join(
-            f"V{format_version(version)} (-{count})"
-            for version, count in sorted(duplicate_reductions.items())
-        )
-        print(f"Resolved legacy duplicate debt: {reduced}")
-    if not changes:
-        print("No migration files changed in this pull request.")
     return 0
 
 

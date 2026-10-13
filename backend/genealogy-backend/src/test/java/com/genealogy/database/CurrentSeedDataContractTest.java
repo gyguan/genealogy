@@ -12,7 +12,7 @@
         class CurrentSeedDataContractTest {
 
             private static final Path ROOT = Path.of("src/main/resources/db/seed/current");
-            private static final Path MIGRATIONS = Path.of("src/main/resources/db/migration");
+            private static final Path BASELINE = Path.of("src/main/resources/db/migration/V1__create_current_schema.sql");
             private static final Path CULTURE_ENTITIES = Path.of("src/main/java/com/genealogy/culture/entity");
 
             @Test
@@ -101,21 +101,19 @@
 
             @Test
             void cultureFeaturedFlagsUseTheExistingSchemaColumns() throws IOException {
-                String migration = Files.readString(
-                        MIGRATIONS.resolve("V20260803171900__add_culture_featured_home_indexes.sql")
-                );
+                String schema = Files.readString(BASELINE).toLowerCase();
                 String scenario = read("10_seed_current_scenarios.sql");
                 String performance = read("20_generate_performance_data.sql");
                 String itemEntity = Files.readString(CULTURE_ENTITIES.resolve("CultureItemEntity.java"));
                 String siteEntity = Files.readString(CULTURE_ENTITIES.resolve("CultureSiteEntity.java"));
 
-                assertThat(migration)
-                        .contains("is_featured_on_home = true")
-                        .contains("idx_culture_item_featured_home")
-                        .contains("idx_culture_site_featured_home")
-                        .doesNotContain("add column")
-                        .doesNotContain("drop column")
-                        .doesNotContain("featured_on_home boolean");
+                assertThat(schema)
+                        .contains("create table public.culture_item")
+                        .contains("create table public.culture_site")
+                        .contains("is_featured_on_home boolean default false not null")
+                        .contains("create index idx_culture_item_featured_home")
+                        .contains("create index idx_culture_site_featured_home")
+                        .doesNotContain("\n    featured_on_home boolean");
                 assertThat(scenario).contains("is_featured_on_home");
                 assertThat(performance).contains("is_featured_on_home");
                 assertThat(itemEntity).contains("@TableField(\"is_featured_on_home\")");

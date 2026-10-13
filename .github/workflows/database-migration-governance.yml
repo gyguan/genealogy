@@ -4,9 +4,10 @@ on:
   pull_request:
     paths:
       - "backend/genealogy-backend/src/main/resources/db/migration/**"
+      - "database/archive/legacy-flyway/**"
       - ".github/scripts/validate-flyway-migrations.py"
       - ".github/workflows/database-migration-governance.yml"
-      - "docs/database-development-standard.md"
+      - "docs/backend/database-and-flyway.md"
       - "backend/genealogy-backend/AGENTS.md"
   workflow_dispatch:
 

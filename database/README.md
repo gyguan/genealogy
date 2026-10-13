@@ -1,41 +1,34 @@
 # Database
 
-本目录用于存放中国式族谱系统的数据库设计、初始化脚本和迁移草案。
+Genealogy 数据库已收敛为 PostgreSQL 16 + Flyway 的全新初始化基线。
 
-## 文件说明
-
-| 文件 | 说明 |
-|---|---|
-| schema-draft.sql | MVP 1 核心表结构草案 |
-
-## MVP 1 核心表
+## 目录
 
 ```text
-clan
-branch
-generation_scheme
-generation_word
-person
-relationship
-source
-attachment
-source_binding
-revision
-review_task
-user_account
-clan_member
-role
-member_role
-import_batch
-import_row
-export_task
-operation_log
+backend/genealogy-backend/src/main/resources/db/
+├── migration/                 # 应用启动时唯一执行的 Flyway 目录
+│   ├── V1__create_current_schema.sql
+│   └── V2__seed_system_authorization.sql
+└── seed/                      # 显式测试/演示/性能数据，不由 Flyway 自动执行
+
+database/
+├── bootstrap/                 # 基线重现与校验工具
+└── archive/
+    ├── legacy-flyway/         # 2026-10 基线收口前的历史迁移，只读归档
+    ├── legacy-rollback/       # 与旧迁移链配套的回滚脚本，只读归档
+    └── schema-draft-before-baseline.sql
 ```
 
-## 设计原则
+## 当前原则
 
-1. 人物和关系分离。
-2. 关系作为独立对象，可绑定来源和审核。
-3. 来源通过 source_binding 绑定到不同对象。
-4. 正式数据修改通过 revision + review_task。
-5. 所有核心表保留 clan_id，确保宗族数据隔离。
+1. 新环境只从 `db/migration` 初始化。
+2. V1 维护当前最终 Schema；V2 只维护系统 RBAC 参考数据。
+3. V1/V2 合入 main 后不可修改，后续变化新增时间戳版本迁移。
+4. archive 不在应用 classpath 中，不得用于正常启动或旧库升级。
+5. 旧数据库历史兼容不属于当前基线支持范围；需要切换时由运维备份后重建。
+6. Demo、测试、压测数据与正式初始化分离。
+7. 应用不会自动执行 `flyway clean`、`repair` 或 drop database。
+
+详细规范：`docs/backend/database-and-flyway.md`。
+
+基线重现与验证：`database/bootstrap/README.md`。

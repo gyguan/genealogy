@@ -59,6 +59,10 @@ genealogy:
     storage-root: ${GENEALOGY_ATTACHMENT_STORAGE_ROOT:./data/attachments}
   auth:
     public-registration-enabled: ${GENEALOGY_AUTH_PUBLIC_REGISTRATION_ENABLED:false}
+    bootstrap-admin-enabled: ${GENEALOGY_AUTH_BOOTSTRAP_ADMIN_ENABLED:false}
+    bootstrap-admin-username: ${GENEALOGY_AUTH_BOOTSTRAP_ADMIN_USERNAME:}
+    bootstrap-admin-password: ${GENEALOGY_AUTH_BOOTSTRAP_ADMIN_PASSWORD:}
+    bootstrap-admin-display-name: ${GENEALOGY_AUTH_BOOTSTRAP_ADMIN_DISPLAY_NAME:Initial Administrator}
     demo-mode-enabled: ${GENEALOGY_AUTH_DEMO_MODE_ENABLED:false}
     expose-bearer-token: false
     expose-reset-token: false

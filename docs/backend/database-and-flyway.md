@@ -1,450 +1,224 @@
-# 数据库开发与 Flyway 迁移规范
+# 数据库开发与 Flyway 规范
 
-本文档规定 Genealogy 项目的 PostgreSQL 数据库设计、SQL 编写、Flyway 迁移、验证和回滚要求。
+Genealogy 使用 PostgreSQL 16 + Flyway。自 2026-10 数据库基线收口后，数据库按**全新初始化**治理，不再支持从此前历史 Flyway 链自动升级。
 
 适用范围：
 
 - `backend/genealogy-backend/src/main/resources/db/migration/`
-- `database/rollback/`
-- 后端 Repository 中的原生 SQL、JPQL 和递归查询
-- 涉及表、字段、索引、约束、视图、函数和数据修复的变更
+- `database/archive/legacy-flyway/`
+- `backend/genealogy-backend/src/main/resources/db/seed/`
+- Repository / MyBatis XML 中的 SQL
+- 表、字段、索引、约束、视图、函数和基础参考数据变更
 
-本规范继承根 `AGENTS.md` 的 P0、P1 规则和 `backend/genealogy-backend/AGENTS.md`。涉及数据库 Schema、Flyway、兼容性或数据修复的变更，必须先形成方案、影响和回滚说明。
-
----
-
-## 1. 核心原则
-
-1. **版本唯一**：任何两个版本化迁移不得使用相同 Flyway 版本。
-2. **历史不可变**：已进入共享环境或可能已执行的版本化迁移不得修改、删除或重命名。
-3. **向前修复**：问题通过新的补偿迁移修复，不依赖修改历史脚本。
-4. **小步交付**：一个迁移只解决一个清晰问题，避免将大量无关 DDL、DML 混在一个文件中。
-5. **兼容优先**：优先使用扩展—迁移—收口方式，避免一次性破坏旧代码和旧数据。
-6. **最小锁影响**：评估表锁、扫描范围、索引构建和执行时长，不在未知数据量上直接执行高风险 DDL/DML。
-7. **可验证、可审计**：每个迁移必须有验证方式、影响行数和回滚或补偿策略。
-8. **敏感数据保护**：SQL、日志、测试数据和回滚脚本不得包含真实个人隐私、密钥或生产敏感数据。
+本规范继承根 `AGENTS.md` 与后端 `AGENTS.md`。
 
 ---
 
-## 2. 目录约定
+## 1. 当前基线
 
-### 2.1 Flyway 正式迁移
+正式运行目录只有：
 
 ```text
-backend/genealogy-backend/src/main/resources/db/migration/
+db/migration/
+├── V1__create_current_schema.sql
+└── V2__seed_system_authorization.sql
 ```
 
-只允许存放 Flyway 自动执行的正式迁移：
+职责：
 
-- `V...__....sql`：版本化迁移；
-- `R__....sql`：可重复执行迁移。
+- **V1**：当前最终表结构、序列、主外键、检查约束、索引；
+- **V2**：内置角色、权限点、角色权限关系；
+- 不包含演示账号、演示族谱、测试数据、性能数据；
+- 不包含旧模型兼容表或历史迁移辅助表。
 
-禁止放入：
-
-- 手工调试 SQL；
-- 临时数据查询；
-- 生产排障脚本；
-- 仅用于回滚的脚本；
-- 未经验证的实验脚本。
-
-### 2.2 手工回滚或补偿脚本
+历史迁移已转存到：
 
 ```text
-database/rollback/
+database/archive/legacy-flyway/
 ```
 
-该目录中的脚本不会被 Flyway 自动执行，文件名使用：
+该目录只用于审计和基线重现，**永远不参与应用启动**。
+
+旧数据库如需使用新版本，先按运维要求备份，再重新创建数据库。禁止通过 `flyway repair`、手工篡改 `flyway_schema_history` 或重新挂载 legacy archive 来伪造兼容升级。
+
+---
+
+## 2. 基线不可变
+
+基线合入 main 后：
+
+1. 禁止修改、删除、重命名 V1/V2；
+2. 禁止修改、删除、重命名 `database/archive/legacy-flyway` 中的历史文件；
+3. Schema 或参考数据变化必须新增更高版本迁移；
+4. 禁止通过关闭 Flyway 校验、修改 history 表或 `repair` 掩盖冲突。
+
+本次基线重置是一次性治理动作，不形成未来修改历史迁移的先例。
+
+---
+
+## 3. 新迁移命名
+
+新增版本化迁移统一使用北京时间时间戳：
 
 ```text
-YYYYMMDD_<issue-or-pr>_<action>_<object>.sql
+VyyyyMMddHHmmss__action_object_detail.sql
+VyyyyMMddHHmmss_NN__action_object_detail.sql
 ```
 
 示例：
 
 ```text
-20260713_issue-101_restore_member_scope.sql
-```
-
-回滚脚本必须注明适用版本、前置条件、风险、数据备份要求和验证方式。
-
----
-
-## 3. Flyway 文件命名
-
-### 3.1 新增版本化迁移
-
-自本规范生效后，所有新增版本化迁移统一使用：
-
-```text
-V<北京时间时间戳>__<动作>_<对象>_<说明>.sql
-```
-
-标准格式：
-
-```text
-VyyyyMMddHHmmss__lower_snake_case_description.sql
-```
-
-示例：
-
-```text
-V20260713193015__add_import_job_file_format.sql
-V20260713194520__backfill_member_grant_scope.sql
-V20260713201000__create_import_job_row_indexes.sql
+V20261013103000__add_person_search_index.sql
+V20261013104500__create_export_task.sql
+V20261013104500_01__backfill_export_task_status.sql
 ```
 
 要求：
 
-- 时间戳使用北京时间 `Asia/Shanghai`，精确到秒；
-- 文件名只能包含 ASCII 小写字母、数字和下划线；
-- 版本与描述之间必须使用两个下划线 `__`；
-- 描述必须以动作动词开头；
-- 同一秒确需创建多个迁移时，使用两位序号：
+- 描述使用小写 `snake_case`；
+- 以明确动作开头：`create/add/alter/rename/backfill/migrate/normalize/fix/rebuild/drop/refresh`；
+- 同一秒序号为 01–99；
+- 合入前版本必须高于 main 当前最大版本；
+- 一个迁移解决一个清晰关注点。
+
+可重复迁移仅在确实可幂等重建的视图、函数或参考数据上使用：
 
 ```text
-V20260713193015_01__add_import_job_file_format.sql
-V20260713193015_02__backfill_import_job_file_format.sql
+R__create_or_replace_xxx.sql
 ```
 
-在 PR 合入前，新增版本必须大于 `main` 中现有最大版本。并行分支发生版本冲突时，后合入的 PR 必须在执行前重新生成版本号。
+活动目录不再使用历史 `beforeEachMigrate` 回调。
 
-当前仓库历史上存在 `V5__...`、`V6__...`、`V2026071301__...` 等不同格式。它们作为历史文件保留，不作为新脚本命名示例，也不得为了统一外观而直接重命名。
+---
 
-### 3.2 推荐动作词
+## 4. 数据与 Seed 分层
 
-| 动作 | 适用场景 |
-|---|---|
-| `create` | 新建表、索引、视图、约束 |
-| `add` | 增加字段、约束或索引 |
-| `alter` | 调整字段属性或对象定义 |
-| `rename` | 重命名对象 |
-| `backfill` | 补齐已有数据 |
-| `migrate` | 数据或语义迁移 |
-| `normalize` | 统一历史数据格式 |
-| `fix` | 修复错误数据或错误约束 |
-| `rebuild` | 经评审后重建索引或对象 |
-| `drop` | 经兼容期和审批后删除对象 |
+### Flyway V2
 
-不推荐使用 `update`、`change`、`modify`、`temp`、`new` 等语义模糊的描述。
+只放应用正常启动所需的**稳定系统参考数据**，当前为 RBAC：
 
-### 3.3 可重复迁移
+- `app_role`
+- `app_permission`
+- `app_role_permission`
 
-可重复迁移使用：
+不得放：
+
+- 默认密码；
+- Demo 用户；
+- 登录 Session；
+- 演示宗族/人物/关系；
+- 性能压测数据；
+- 临时修复数据。
+
+### 显式 Seed
+
+测试、演示和性能数据放在：
 
 ```text
-R__<动作>_<对象>_<说明>.sql
+backend/genealogy-backend/src/main/resources/db/seed/
 ```
 
-示例：
+它们不是 Flyway migration，只能由测试、专项脚本或人工明确执行。
+
+---
+
+## 5. Schema 设计
+
+- PostgreSQL 对象统一小写 `snake_case`；
+- 主键统一 `id`，Java 与 PostgreSQL ID 类型一致；
+- 外键使用 `<object>_id`；
+- 创建/更新时间使用 `created_at` / `updated_at`；
+- 布尔字段使用 `is_/has_/can_`；
+- 状态字段必须有稳定值域，优先 CHECK 或应用枚举；
+- 日期用 `date`，时间点优先 `timestamptz`；
+- 精确数值使用 `numeric`；
+- JSONB 只承载真正动态结构，需要检索/关联/约束的字段必须独立建列。
+
+约束、索引名称推荐：
 
 ```text
-R__create_or_replace_member_permission_view.sql
-R__refresh_reference_data.sql
+pk_<table>
+uk_<table>__<columns>
+fk_<table>__<ref_table>
+ck_<table>__<rule>
+idx_<table>__<columns_or_purpose>
 ```
 
-仅适用于能够安全重复执行的对象，例如：
+---
 
-- `CREATE OR REPLACE VIEW`；
-- 可重复创建的函数；
-- 明确幂等的基础参考数据。
+## 6. DDL 与数据变更
 
-禁止用于：
+新增字段、约束和索引必须考虑：
 
-- 建表；
-- 增删字段；
-- 大批量业务数据修复；
-- 不可重复的 `INSERT`、`UPDATE`、`DELETE`；
-- 需要固定执行顺序的迁移。
+- 查询与写入成本；
+- 锁与全表扫描；
+- 数据量增长；
+- 失败后的前向补偿；
+- JPA/MyBatis 映射同步；
+- API/业务状态语义。
 
-### 3.4 禁止使用 Undo 迁移作为主回滚机制
+有既有数据的环境从**当前新基线之后**开始继续遵循扩展 → 回填 → 约束 → 收口的前向迁移原则。
 
-本项目不使用 `U...__....sql` 作为默认回滚方式。数据库变更采用前向迁移和补偿迁移，必要的人工回滚脚本放入 `database/rollback/`。
+`UPDATE` / `DELETE` 必须有明确条件；大批量修改必须评估批次、事务、WAL 和锁。
 
 ---
 
-## 4. 迁移脚本头部说明
+## 7. 索引与查询
 
-每个新增版本化迁移应在文件顶部包含：
+新增索引必须能对应真实查询入口，并说明：
 
-```sql
--- Purpose: 本迁移解决的问题
--- Issue/PR: #123 / PR #456
--- Risk: low | medium | high
--- Lock impact: 可能持有的锁及预计影响
--- Data volume: 预计扫描或更新的数据量
--- Compatibility: 与旧代码、旧字段的兼容策略
--- Rollback/Compensation: 回滚或前向补偿方式
--- Verification: 执行后的验证 SQL 或验证步骤
-```
+- WHERE 条件；
+- ORDER BY；
+- 字段顺序和选择性；
+- 是否覆盖稳定排序；
+- 写入成本。
 
-涉及高风险数据修复时，还应注明：
-
-- 执行前备份要求；
-- 预计影响行数；
-- 分批策略；
-- 可中断点；
-- 失败后的恢复步骤。
+高频、大集合查询必须有分页/硬上限/批次策略，并以唯一字段结束稳定排序。禁止无条件全表读取、内存分页、N+1 和无界递归。
 
 ---
 
-## 5. 数据库对象命名
+## 8. 验证
 
-所有 PostgreSQL 对象统一使用小写 `snake_case`，避免依赖双引号和大小写敏感标识符。
+数据库相关 PR 最少验证：
 
-### 5.1 表与字段
+1. `bash backend/genealogy-backend/scripts/check-flyway-migrations.sh`；
+2. `.github/scripts/validate-flyway-migrations.py` 治理检查；
+3. PostgreSQL 16 空库执行全部活动 migrations；
+4. Spring Boot 使用空库成功启动；
+5. 实体 / Mapper 映射和关键 Repository 测试；
+6. 基线相关变更还必须运行 `database/bootstrap/generate-baseline.sh`，并确认生成 V1/V2 与仓库版本一致。
 
-| 对象 | 规则 | 示例 |
-|---|---|---|
-| 业务表 | 单数名词或稳定领域对象 | `person`、`relationship`、`import_job` |
-| 关联表 | `<left>_<right>` 或明确业务名 | `source_binding`、`clan_membership` |
-| 主键 | `id` | `id` |
-| 外键 | `<对象>_id` | `clan_id`、`branch_id` |
-| 布尔字段 | `is_`、`has_`、`can_` 开头 | `is_living`、`has_attachment` |
-| 状态字段 | `<对象或阶段>_status` | `review_status`、`processing_status` |
-| 创建时间 | `created_at` | `created_at` |
-| 更新时间 | `updated_at` | `updated_at` |
-| 删除/归档时间 | `deleted_at`、`archived_at` | `archived_at` |
-| 乐观锁 | `version` | `version` |
+CI：
 
-字段名必须表达业务语义，不使用 `flag1`、`type2`、`ext`、`data1` 等含义不清的名称。
+- `.github/workflows/database-migration-governance.yml`
+- `.github/workflows/fresh-database-baseline.yml`
 
-### 5.2 约束与索引
-
-| 对象 | 命名格式 | 示例 |
-|---|---|---|
-| 主键 | `pk_<table>` | `pk_import_job` |
-| 唯一约束 | `uk_<table>__<columns>` | `uk_import_job_row__job_id_row_no` |
-| 外键 | `fk_<table>__<ref_table>` | `fk_import_job_row__import_job` |
-| 检查约束 | `ck_<table>__<rule>` | `ck_import_job__file_format` |
-| 普通索引 | `idx_<table>__<columns>` | `idx_import_job__clan_id_created_at` |
-| 部分索引 | `idx_<table>__<purpose>` | `idx_review_task__pending` |
-
-名称应能说明查询用途。PostgreSQL 标识符最长 63 字节，超过时应缩短对象和字段组合，但不能使用不可理解缩写。
-
-### 5.3 其他对象
-
-| 对象 | 命名格式 |
-|---|---|
-| 视图 | `v_<name>` |
-| 物化视图 | `mv_<name>` |
-| 序列 | `seq_<table>` |
-| 函数 | `fn_<action>_<object>` |
-| 触发器 | `trg_<table>__<timing>_<event>` |
-| 审计表 | `<table>_audit` 或明确业务审计名 |
+只验证 SQL 语法不能视为完成。
 
 ---
 
-## 6. 数据类型规范
+## 9. 回滚与恢复
 
-1. Java 和数据库 ID 类型必须一致，不允许数据库 `bigint` 对应 Java `int/Integer`。
-2. 主键优先沿用项目当前统一方案；新增模块不得自行混用自增 ID、UUID 和字符串主键。
-3. 时间点优先使用 `timestamptz`；数据库保存统一时间语义，面向用户时转换为北京时间。
-4. 仅日期使用 `date`，不使用字符串保存日期。
-5. 金额或精确小数使用 `numeric(p, s)`，禁止使用 `float/double`。
-6. 布尔语义使用 `boolean`，不使用 `char(1)`、`0/1` 字符串。
-7. 长度稳定且需要约束的文本使用 `varchar(n)`；无法合理确定长度时使用 `text`。
-8. `jsonb` 只用于结构确实动态的扩展内容；需要筛选、关联、唯一约束或审计的关键字段必须独立建列。
-9. 状态和类型字段必须有明确值域，可使用检查约束、参考表或稳定枚举映射，禁止自由文本漂移。
-10. 敏感字段必须遵循最小存储、脱敏、加密和访问审计要求。
+从新基线之后的迁移默认采用**前向补偿**。高风险变更在 PR 中说明：
 
----
+- 影响范围；
+- 备份要求；
+- 锁影响；
+- 恢复点；
+- 前向补偿方案。
 
-## 7. DDL 变更规范
-
-### 7.1 一个迁移一个关注点
-
-推荐拆分：
-
-```text
-新增可空字段
-→ 分批回填数据
-→ 校验数据完整性
-→ 增加 NOT NULL / CHECK / FK
-→ 增加或调整索引
-→ 兼容期后删除旧字段
-```
-
-大表上禁止将新增字段、全量回填、强约束和多个索引全部塞进一次高风险事务。
-
-### 7.2 字段新增与收口
-
-新增非空字段优先采用：
-
-1. 先新增可空字段或带安全默认值的字段；
-2. 更新应用实现，兼容新旧字段；
-3. 分批回填历史数据；
-4. 验证不存在空值或非法值；
-5. 再增加 `NOT NULL`、检查约束或唯一约束；
-6. 兼容期结束后再删除旧字段。
-
-### 7.3 删除和重命名
-
-删除或重命名表、字段、索引、约束前必须：
-
-- 搜索后端、前端、OpenAPI、报表、脚本和外部调用；
-- 明确兼容窗口；
-- 先完成双读、双写或别名过渡；
-- 提供数据恢复或前向补偿方案；
-- 在 PR 中说明破坏性影响。
-
-禁止在一个版本中同时“重命名字段并立即删除旧字段”，除非已证明没有任何旧版本调用。
-
-### 7.4 索引
-
-新增索引必须对应真实查询条件、排序或唯一性要求，并说明：
-
-- 查询入口；
-- 过滤条件；
-- 字段顺序；
-- 选择性；
-- 是否覆盖排序；
-- 写入成本；
-- 数据量较大时的 `EXPLAIN` / `EXPLAIN ANALYZE` 证据。
-
-大表需要 `CREATE INDEX CONCURRENTLY` 时，必须使用独立迁移并确认该迁移不在事务中执行；不得与其他 DDL/DML 混合。
-
-### 7.5 外键与检查约束
-
-- 外键字段应有支持查询和删除校验的索引；
-- 明确 `ON DELETE` / `ON UPDATE` 行为，不依赖默认语义猜测；
-- 大表新增约束时评估全表扫描和锁影响，可采用先建立、后验证的分阶段方式；
-- 不使用约束替代应用层权限和审核规则。
+应用不会自动 drop/recreate 生产数据库。旧 Flyway 历史与旧数据兼容不属于当前基线支持范围。
 
 ---
 
-## 8. 数据迁移与修复规范
+## 10. PR 检查清单
 
-1. `UPDATE`、`DELETE` 必须有明确 `WHERE` 条件，执行前先用同条件 `SELECT COUNT(*)` 评估影响。
-2. 大批量数据更新必须评估分批策略、事务大小、WAL、锁和复制延迟。
-3. 数据迁移应尽量幂等，重复执行不得产生重复记录或二次破坏。
-4. 关键迁移应记录迁移前后数量、异常数量和校验结果。
-5. 不在 SQL 中硬编码真实用户、手机号、邮箱、证件号或其他个人隐私。
-6. 不通过“修数据”绕过正式审核、权限和审计流程。
-7. 需要业务规则判断的大规模迁移，应优先设计受控迁移程序或分阶段任务，不把复杂业务逻辑全部塞进单条 SQL。
-8. 临时表必须使用明确名称，并在迁移完成后清理；不得遗留 `tmp1`、`test_table` 等对象。
-
----
-
-## 9. 事务、锁与性能
-
-数据库变更设计时必须回答：
-
-- 是否会全表扫描；
-- 会获取什么级别、持续多久的锁；
-- 是否阻塞读或写；
-- 数据量增长后是否仍可执行；
-- 失败时事务是否会持有大量锁或产生大量回滚；
-- 是否影响主从复制、备份或归档；
-- 是否需要维护窗口。
-
-高风险操作包括但不限于：
-
-- 大表 `ALTER TABLE`；
-- 全表 `UPDATE` / `DELETE`；
-- 新增非空字段并立即回填；
-- 重建大索引；
-- 修改主键、外键或唯一约束；
-- 无边界递归 CTE；
-- 大量 JSONB 重写；
-- 改变字段类型并触发表重写。
-
-高风险迁移必须在 PR 中提供数据规模、锁影响、预计执行方式和回滚/补偿方案。
-
----
-
-## 10. 回滚、补偿与 Flyway Repair
-
-### 10.1 默认采用前向补偿
-
-迁移出现问题时，优先新增更高版本的补偿迁移，例如：
-
-```text
-V20260713193015__add_member_scope.sql
-V20260713201500__fix_member_scope_backfill.sql
-```
-
-不得修改第一条已经执行的脚本来“修正历史”。
-
-### 10.2 使用 Flyway Repair 的限制
-
-`flyway repair` 只能在确认以下信息后，由明确责任人执行：
-
-- 各环境 `flyway_schema_history` 实际记录；
-- 已执行版本和 checksum；
-- 当前文件与已执行 SQL 的差异；
-- 数据库备份和恢复点；
-- Repair 对所有环境的一致性影响。
-
-禁止把 `flyway repair` 当作重复版本、脚本被修改或校验失败的常规解决办法。
-
-### 10.3 当前重复 V3 的处理原则
-
-仓库当前存在两个历史 `V3` 迁移，已经导致 Flyway 在启动阶段报“more than one migration with version 3”。该问题必须在独立治理任务中处理，不能在普通业务 PR 中随意重命名。
-
-处理前必须：
-
-1. 盘点开发、测试和其他共享环境的 `flyway_schema_history`；
-2. 确认两个 V3 是否在任一环境执行过，以及实际 checksum；
-3. 若均未进入任何共享环境，可在专门 PR 中重新编号并执行全新库验证；
-4. 若已有环境执行，必须制定兼容、Repair 或基线迁移方案；
-5. 完成备份、全新库迁移、已有库升级和应用启动验证后再合入。
-
----
-
-## 11. 验证要求
-
-包含数据库变更的 PR 至少完成：
-
-1. Flyway 文件名规范检查；
-2. 版本唯一性检查；
-3. 历史版本化迁移未被修改检查；
-4. 空数据库从头执行迁移；
-5. 从受支持的历史版本升级执行迁移；
-6. 应用启动和实体映射验证；
-7. 迁移前后数据数量与约束校验；
-8. 关键 Repository / SQL 自动化测试；
-9. 涉及大数据量时提供执行计划或模拟数据验证；
-10. 回滚或补偿方案评审。
-
-只完成语法检查不能视为数据库迁移验证完成。
-
----
-
-## 12. PR 数据库检查清单
-
-数据库相关 PR 必须说明：
-
-- [ ] 迁移文件使用新命名规范；
-- [ ] 版本号在当前 `main` 中唯一且大于最大版本；
-- [ ] 未修改、删除或重命名已存在的版本化迁移；
-- [ ] 变更目的、范围和非目标清晰；
-- [ ] DDL、DML、索引和约束拆分合理；
-- [ ] 已评估锁、扫描行数和执行时长；
-- [ ] 已说明旧代码和旧数据兼容策略；
-- [ ] 已说明回滚或前向补偿方案；
-- [ ] 已验证空库迁移和历史库升级；
-- [ ] 已执行应用启动或相关 Repository 测试；
-- [ ] 不包含真实隐私数据；
-- [ ] 风险、限制和未完成项已写入 PR。
-
----
-
-## 13. 自动治理
-
-仓库使用：
-
-```text
-.github/scripts/validate-flyway-migrations.py
-.github/workflows/database-migration-governance.yml
-```
-
-自动检查：
-
-- 新增版本化迁移是否符合时间戳命名；
-- 描述是否为小写 `snake_case` 并以标准动作开头；
-- 新版本是否大于 `main` 当前最大版本；
-- 是否新增重复 Flyway 版本；
-- 是否修改、删除或重命名已有版本化迁移；
-- Repeatable 迁移名称是否规范。
-
-当前历史重复 V3 会作为已知基线问题报告；自动检查禁止新增或扩大重复版本，但不会用静默改名的方式掩盖现有问题。重复 V3 仍需独立治理并彻底修复。
+- [ ] V1/V2 未被修改；
+- [ ] legacy archive 未被修改；
+- [ ] 新迁移命名和版本唯一；
+- [ ] Schema 与 Java/MyBatis 映射一致；
+- [ ] 系统参考数据与 Demo/Test 数据分离；
+- [ ] 约束、索引和查询边界合理；
+- [ ] 空库 Flyway + Spring Boot 启动通过；
+- [ ] 相关自动化测试通过；
+- [ ] 风险与补偿方案已记录。

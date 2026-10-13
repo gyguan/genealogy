@@ -65,6 +65,10 @@ public class AppUserRepository {
         return mapper.findAll();
     }
 
+    public boolean existsAny() {
+        return mapper.selectCount(null) > 0;
+    }
+
     public List<AppUserEntity> findAllById(Iterable<Long> ids) {
         List<Long> values = toList(ids);
         return values.isEmpty() ? List.of() : mapper.findAllByIds(values);
