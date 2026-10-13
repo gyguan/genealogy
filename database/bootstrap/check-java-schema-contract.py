@@ -164,6 +164,32 @@ def parse_entities(schema: dict[str, dict[str, str]], v1_sql: str) -> tuple[list
     return errors, mapped_tables, mapped_columns
 
 
+def check_base_mapper_entities() -> list[str]:
+    errors: list[str] = []
+    entity_files = {
+        path.stem: path
+        for path in JAVA_ROOT.rglob("*Entity.java")
+    }
+    for path in sorted(JAVA_ROOT.rglob("*.java")):
+        text = path.read_text(encoding="utf-8", errors="ignore")
+        match = re.search(r"extends\s+BaseMapper<([A-Za-z_][A-Za-z0-9_]*)>", text)
+        if not match:
+            continue
+        entity_name = match.group(1)
+        entity_path = entity_files.get(entity_name)
+        if entity_path is None:
+            errors.append(
+                f"{path.relative_to(ROOT)}: BaseMapper entity {entity_name} source not found"
+            )
+            continue
+        entity_text = entity_path.read_text(encoding="utf-8")
+        if not re.search(r"@TableName\s*\(", entity_text):
+            errors.append(
+                f"{entity_path.relative_to(ROOT)}: BaseMapper entity must declare explicit @TableName"
+            )
+    return errors
+
+
 def parse_mapper_tables(schema: dict[str, dict[str, str]]) -> list[str]:
     errors: list[str] = []
     for path in sorted(MAPPER_ROOT.rglob("*.xml")):
@@ -434,6 +460,7 @@ def main() -> int:
     errors: list[str] = []
     entity_errors, mapped_tables, mapped_columns = parse_entities(schema, v1_sql)
     errors.extend(entity_errors)
+    errors.extend(check_base_mapper_entities())
     errors.extend(parse_mapper_tables(schema))
     errors.extend(check_java_value_domains(v1_sql))
     errors.extend(check_java_permission_contract(v2_sql))
