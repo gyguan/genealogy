@@ -8,7 +8,7 @@ spring:
     driver-class-name: org.postgresql.Driver
   flyway:
     enabled: true
-    locations: classpath:db/baseline
+    locations: classpath:db/migration
     validate-on-migrate: true
     clean-disabled: true
   jackson:
