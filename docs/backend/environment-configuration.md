@@ -2,7 +2,7 @@
 
 ## 配置原则
 
-后端不在默认配置中保存数据库密码、生产密钥或可直接使用的弱凭据。所有环境均使用 Flyway 管理数据库版本，并保持 Hibernate `ddl-auto=validate`，禁止以自动建表替代迁移。
+后端不在默认配置中保存数据库密码、生产密钥或可直接使用的弱凭据。当前持久化层使用 MyBatis/MyBatis-Plus，所有环境均由 Flyway 管理数据库结构，禁止由 ORM 或运行时代码自动建表。
 
 ## Profile 职责
 
@@ -29,6 +29,10 @@
 - `SERVER_PORT`
 - `GENEALOGY_ATTACHMENT_STORAGE_ROOT`
 - `GENEALOGY_AUTH_PUBLIC_REGISTRATION_ENABLED`
+- `GENEALOGY_AUTH_BOOTSTRAP_ADMIN_ENABLED`
+- `GENEALOGY_AUTH_BOOTSTRAP_ADMIN_USERNAME`
+- `GENEALOGY_AUTH_BOOTSTRAP_ADMIN_PASSWORD`
+- `GENEALOGY_AUTH_BOOTSTRAP_ADMIN_DISPLAY_NAME`
 - `GENEALOGY_AUTH_COOKIE_SAME_SITE`
 - `GENEALOGY_AUTH_SESSION_HOURS`
 - `GENEALOGY_AUTH_REMEMBER_ME_HOURS`
@@ -71,16 +75,34 @@ export DB_PASSWORD='<injected-by-secret-manager>'
 java -jar genealogy-backend-0.1.0-SNAPSHOT.jar
 ```
 
+### 全新数据库的首账号
+
+V2 不预置 Demo 用户或固定管理员密码。生产环境公共注册保持关闭，因此第一次部署空数据库时，需要显式提供一次性 bootstrap 账号：
+
+```bash
+export GENEALOGY_AUTH_BOOTSTRAP_ADMIN_ENABLED=true
+export GENEALOGY_AUTH_BOOTSTRAP_ADMIN_USERNAME='<initial-login>'
+export GENEALOGY_AUTH_BOOTSTRAP_ADMIN_PASSWORD='<12-to-64-character-secret>'
+export GENEALOGY_AUTH_BOOTSTRAP_ADMIN_DISPLAY_NAME='<display-name>'
+```
+
+该机制仅在 `app_user` 为空时创建账号，密码使用正常密码哈希流程保存。已有任意用户时会跳过。首账号登录后通过正常流程创建第一个宗族，系统会自动授予该宗族的 `clan_admin`。创建完成后应关闭 `GENEALOGY_AUTH_BOOTSTRAP_ADMIN_ENABLED`。
+
+
 ## Flyway 策略
 
-- 本地：启动时执行迁移，确保开发库与代码同步。
-- 测试与 CI：使用隔离 PostgreSQL，执行全量迁移和历史版本升级验证。
-- 生产：启动时先执行 Flyway 校验与迁移，随后执行 Hibernate Schema Validate。
-- 所有环境：`clean` 禁用，迁移文件必须追加，已合入的版本化迁移不可修改。
+- 本地：启动时执行 Flyway，确保开发库与代码同步。
+- 测试与 CI：使用隔离 PostgreSQL，验证 fresh baseline、活动迁移链以及 Java/MyBatis 与数据库契约。
+- 生产：启动时执行 Flyway 校验与迁移，不使用 Hibernate/JPA 自动 DDL。
+- 当前 V1/V2 是 fresh-install 基线；合入 main 后不可修改、删除或重命名。
+- 后续数据库变化只新增时间戳版本迁移；`clean` 始终禁用。
+- `database/archive/legacy-flyway` 只用于审计和基线重现，不属于受支持的生产升级路径。
 
 CI 的 `Backend Configuration Governance` 工作流自动验证：
 
 1. 生产 Profile 缺少 Secret 时启动失败。
-2. 空数据库可从零执行全部迁移。
-3. 数据库可从受支持的前一 Flyway 版本升级到最新版本。
-4. 迁移完成后 Hibernate Schema Validate 通过。
+2. 空数据库可从 V1/V2 完成初始化并启动应用。
+3. 活动迁移链可从当前前一版本升级到最新版本（当前即 V1 → V2），不承诺 archive 中旧数据库升级。
+4. 数据库初始化后应用可正常启动并通过后端配置校验。
+
+另由 `Fresh Database Baseline Check` 验证 V1/V2 可重复生成、byte-for-byte 一致，以及 Java/MyBatis 表、字段、类型、主键、枚举值域和 RBAC 种子契约。
