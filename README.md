@@ -57,17 +57,15 @@ Web / OpenAPI Client
 
 ### 启动后端
 
+项目默认本地连接为 `jdbc:postgresql://localhost:5432/genealogy`，用户 `genealogy`。使用项目 Docker 数据库时：
+
 ```bash
 cd backend/genealogy-backend
 docker compose up -d
-
-export SPRING_PROFILES_ACTIVE=local
-export DB_URL=jdbc:postgresql://localhost:5432/genealogy
-export DB_USERNAME=genealogy
-export DB_PASSWORD='<local-password>'
-
 mvn spring-boot:run
 ```
+
+在 IDEA 中可直接运行 `GenealogyApplication`，无需设置 Active profiles。自定义数据库连接可通过 `DB_URL`、`DB_USERNAME`、`DB_PASSWORD`，或复制 `backend/genealogy-backend/config/application-local.example.yml` 为 `application-local.yml` 后覆盖。
 
 后端默认入口：
 

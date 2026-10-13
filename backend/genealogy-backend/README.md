@@ -36,19 +36,29 @@ Maven
 
 ## 本地启动
 
+默认开发数据库连接与 `docker-compose.yml` 保持一致：
+
+```text
+URL      jdbc:postgresql://localhost:5432/genealogy
+Database genealogy
+Username genealogy
+Password genealogy_local_only
+```
+
+使用项目 Docker PostgreSQL 16：
+
 ```bash
 cd backend/genealogy-backend
 docker compose up -d
-
-export SPRING_PROFILES_ACTIVE=local
-export DB_URL=jdbc:postgresql://localhost:5432/genealogy
-export DB_USERNAME=genealogy
-export DB_PASSWORD='<local-password>'
-
 mvn spring-boot:run
 ```
 
-数据库连接和凭据通过环境变量或本地安全配置注入，不在默认配置或 README 中提交固定密码。
+IDEA 可直接运行 `GenealogyApplication`，无需设置 `Active profiles=local`。需要覆盖数据库或本地调试配置时有两种方式：
+
+1. 使用 `DB_URL`、`DB_USERNAME`、`DB_PASSWORD` 环境变量；
+2. 将 `config/application-local.example.yml` 复制为 `config/application-local.yml`，该文件已被 Git 忽略并由 `application.yml` 自动导入。
+
+原有 `local` profile 继续保留，用于兼容已有启动配置以及启用本地 DEBUG / 测试 Token 行为；它不再是获得 DataSource 配置的前提。生产环境仍必须显式使用 `prod` profile，并通过 Secret 注入数据库凭据。
 
 健康检查与 OpenAPI：
 
