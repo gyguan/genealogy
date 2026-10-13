@@ -3,7 +3,34 @@
 本目录只针对 `main` 分支**当前已经实现的数据库模型**，不依赖领域模型 V2 的后续 Issue。
 脚本覆盖现有的宗族、支派、人物、关系、字辈、来源、时间线、审核、导入、RBAC、文化资料、迁徙、文化场所和操作日志。
 
-这些脚本是开发、测试和性能环境的显式工具，**不会由 Flyway 自动执行**。
+这些脚本是开发、测试和性能环境的工具，**不会作为 Flyway migration 自动执行**。本地无 Profile / `local` 启动时，应用会在数据库尚无任何宗族数据时自动执行当前场景 Seed；已有宗族数据、CI、测试和生产环境都会跳过。
+
+## 本地自动初始化
+
+应用默认配置：
+
+```yaml
+genealogy:
+  seed:
+    auto-enabled: ${GENEALOGY_SEED_AUTO_ENABLED:true}
+```
+
+满足以下条件时，后端启动完成后会自动初始化测试数据：
+
+- 没有显式 Active Profile，或唯一 Active Profile 为 `local`；
+- 当前不是 CI 环境；
+- `GENEALOGY_SEED_AUTO_ENABLED` 未关闭；
+- `clan` 表中还没有任何宗族数据。
+
+只要数据库已经存在任意宗族，自动初始化就会跳过，**不会清理或覆盖现有业务数据**。生产 `prod/production` 配置强制关闭自动 Seed。
+
+如需在本地临时关闭：
+
+```powershell
+$env:GENEALOGY_SEED_AUTO_ENABLED="false"
+```
+
+手工“清理后重建”仍使用下面的一键 SQL / PowerShell 入口。
 
 ## 本地一键初始化
 
