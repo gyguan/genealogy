@@ -3,10 +3,17 @@ param(
     [int]$Port = 5432,
     [string]$Database = "genealogy",
     [string]$Username = "genealogy",
-    [string]$Password = "123456"
+    [string]$Password = "123456",
+    [ValidateSet("local", "dev", "development", "test", "ci", "perf", "performance")]
+    [string]$Environment = "local",
+    [switch]$ConfirmReset
 )
 
 $ErrorActionPreference = "Stop"
+if (-not $ConfirmReset) {
+    throw "Refusing to reset business data. Re-run with -ConfirmReset after verifying the target database."
+}
+
 $psql = Get-Command psql -ErrorAction SilentlyContinue
 if (-not $psql) {
     throw "psql was not found in PATH. Install the PostgreSQL client or add its bin directory to PATH."
@@ -31,7 +38,7 @@ try {
     $env:PGPASSWORD = $Password
     $target = $HostName + ":" + $Port + "/" + $Database
     Write-Host "[1/3] Resetting current business data in $target ..."
-    Invoke-PsqlFile -FilePath $resetScript -ExtraArgs @("-v", "environment=local", "-v", "confirm_reset=RESET_CURRENT_GENEALOGY_DATA")
+    Invoke-PsqlFile -FilePath $resetScript -ExtraArgs @("-v", "environment=$Environment", "-v", "confirm_reset=RESET_CURRENT_GENEALOGY_DATA")
 
     Write-Host "[2/3] Seeding deterministic local scenarios ..."
     Invoke-PsqlFile -FilePath $scenarioScript
