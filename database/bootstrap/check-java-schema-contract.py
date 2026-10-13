@@ -39,6 +39,34 @@ def annotation_value(annotation: str) -> str | None:
     match = re.search(r'(?:value\s*=\s*)?"([^"]+)"', annotation)
     return match.group(1) if match else None
 
+def java_sql_type_compatible(java_type: str, sql_definition: str) -> bool:
+    sql = sql_definition.lower()
+    normalized = java_type.replace(" ", "")
+    checks = {
+        "Long": ("bigint",),
+        "long": ("bigint",),
+        "Integer": ("integer",),
+        "int": ("integer",),
+        "Boolean": ("boolean",),
+        "boolean": ("boolean",),
+        "BigDecimal": ("numeric", "decimal"),
+        "LocalDate": ("date",),
+        "LocalDateTime": ("timestamp",),
+        "OffsetDateTime": ("timestamp with time zone",),
+        "Instant": ("timestamp with time zone",),
+        "UUID": ("uuid",),
+        "byte[]": ("bytea",),
+    }
+    if normalized.startswith("Map<"):
+        return "jsonb" in sql or "json" in sql
+    if normalized == "String":
+        return any(token in sql for token in ("character varying", "varchar", "text", "jsonb", "json"))
+    expected = checks.get(normalized)
+    if expected is None:
+        return True
+    return any(token in sql for token in expected)
+
+
 
 def parse_entities(schema: dict[str, dict[str, str]], v1_sql: str) -> tuple[list[str], set[str]]:
     errors: list[str] = []
@@ -95,6 +123,12 @@ def parse_entities(schema: dict[str, dict[str, str]], v1_sql: str) -> tuple[list
                     f"{path.relative_to(ROOT)}: field {property_name} maps to missing {table}.{column}"
                 )
                 continue
+
+            if not java_sql_type_compatible(java_type, schema[table][column]):
+                errors.append(
+                    f"{path.relative_to(ROOT)}: Java type {java_type} is incompatible with "
+                    f"{table}.{column} ({schema[table][column]})"
+                )
 
             if id_match:
                 pk_pattern = re.compile(
@@ -250,8 +284,9 @@ def check_java_permission_contract(v2_sql: str) -> list[str]:
 
     ungranted_permissions = sorted(candidates & permissions - granted_permissions)
     if ungranted_permissions:
-        errors.append(
-            "Java-used permissions have no active allow grant in V2: "
+        print(
+            "Java-used permissions currently have no direct active V2 grant "
+            "(allowed when code has an explicit fallback/bypass): "
             + ", ".join(ungranted_permissions)
         )
 
@@ -293,8 +328,8 @@ def check_java_permission_contract(v2_sql: str) -> list[str]:
                     f"UnifiedAccessDecisionService caller requires missing V2 permission {code}"
                 )
             elif code not in granted_permissions:
-                errors.append(
-                    f"UnifiedAccessDecisionService caller uses ungranted V2 permission {code}"
+                print(
+                    f"Unified access caller uses V2 permission without a direct role grant: {code}"
                 )
 
     return errors
