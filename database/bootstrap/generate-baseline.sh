@@ -58,7 +58,9 @@ docker exec "$cid" pg_dump -U genealogy -d genealogy_baseline \
 docker exec "$cid" pg_dump -U genealogy -d genealogy_baseline \
   --data-only --inserts --column-inserts --no-owner --no-privileges \
   --table=public.app_role --table=public.app_permission --table=public.app_role_permission \
-  | awk 'substr($0,1,1) != sprintf("%c",92)' >"$OUT/V2__seed_system_authorization.sql"
+  | awk 'substr($0,1,1) != sprintf("%c",92)' \
+  | python3 -c "import re,sys; s=sys.stdin.read(); print(re.sub(r\"'\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?'\", \"'2000-01-01 00:00:00'\", s), end='')" \
+  >"$OUT/V2__seed_system_authorization.sql"
 # Validate both artifacts against an empty scratch database without starting the app.
 docker exec "$cid" psql -U genealogy -d postgres -v ON_ERROR_STOP=1 \
   -c 'CREATE DATABASE genealogy_baseline_verify' >/dev/null
