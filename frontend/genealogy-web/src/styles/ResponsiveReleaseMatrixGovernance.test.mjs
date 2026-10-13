@@ -6,6 +6,11 @@ const registryPath = new URL('../../e2e/responsive-release-matrix.ts', import.me
 const specPath = new URL('../../e2e/responsive-release-matrix.spec.ts', import.meta.url);
 const registry = readFileSync(registryPath, 'utf8');
 const spec = readFileSync(specPath, 'utf8');
+const shell = readFileSync(new URL('../app/AuthenticatedShell.tsx', import.meta.url), 'utf8');
+const shellCss = readFileSync(new URL('./shell/app-shell.css', import.meta.url), 'utf8');
+const dataTable = readFileSync(new URL('../shared/ui/DataTable.tsx', import.meta.url), 'utf8');
+const sharedAntCss = readFileSync(new URL('./shared/shared-antd-contracts.css', import.meta.url), 'utf8');
+const lineageCss = readFileSync(new URL('../lineage-graph.css', import.meta.url), 'utf8');
 
 const requiredPages = [
   ['home', '族谱首页'],
@@ -56,4 +61,19 @@ test('responsive matrix produces mobile screenshots and JSON failure reports', (
   assert.match(spec, /ant-drawer-content-wrapper:visible/);
   assert.match(spec, /ant-modal-content:visible/);
   assert.match(spec, /expect\.soft\(report\.failures/);
+});
+
+
+test('mobile shell and shared dense views keep minimum usability contracts', () => {
+  assert.match(shell, /MenuOutlined/);
+  assert.match(shell, /mobile-nav-trigger/);
+  assert.match(shell, /<Drawer/);
+  assert.match(shell, /trigger=\{null\}/);
+  assert.match(shellCss, /@media \(max-width: 991px\)/);
+  assert.match(shellCss, /\.mobile-nav-trigger/);
+  assert.match(dataTable, /table-mobile-scroll-hint/);
+  assert.match(sharedAntCss, /左右滑动|table-mobile-scroll-hint/);
+  assert.match(sharedAntCss, /-webkit-overflow-scrolling: touch/);
+  assert.match(lineageCss, /@media \(max-width: 760px\)/);
+  assert.match(lineageCss, /\.lineage-graph-toolbar > \.ant-space/);
 });
