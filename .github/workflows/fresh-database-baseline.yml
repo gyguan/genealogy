@@ -1,53 +1,52 @@
 name: Fresh Database Baseline Check
+
 on:
-  push:
-    branches: [chore/fresh-database-baseline-20261012]
-    paths:
-      - 'database/bootstrap/**'
-      - '.github/workflows/fresh-database-baseline.yml'
   pull_request:
     paths:
       - 'database/bootstrap/**'
-      - '.github/workflows/fresh-database-baseline.yml'
+      - 'database/archive/legacy-flyway/**'
       - 'backend/genealogy-backend/src/main/resources/db/migration/**'
+      - 'backend/genealogy-backend/src/main/resources/application.yml'
+      - '.github/workflows/fresh-database-baseline.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'database/bootstrap/**'
+      - 'database/archive/legacy-flyway/**'
+      - 'backend/genealogy-backend/src/main/resources/db/migration/**'
+      - 'backend/genealogy-backend/src/main/resources/application.yml'
+      - '.github/workflows/fresh-database-baseline.yml'
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  generate-baseline:
+  verify-fresh-baseline:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-        with:
-          persist-credentials: true
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
           cache: maven
           cache-dependency-path: backend/genealogy-backend/pom.xml
-      - name: Generate isolated PostgreSQL baseline and replay SQL
+      - name: Check active Flyway file set
+        run: |
+          cd backend/genealogy-backend
+          bash scripts/check-flyway-migrations.sh
+      - name: Rebuild and boot clean PostgreSQL baseline
         run: bash database/bootstrap/generate-baseline.sh
-      - name: Upload SQL and diagnostic logs
+      - name: Verify checked-in V1/V2 exactly match rebuilt baseline
+        run: |
+          cmp database/bootstrap/generated/V1__create_current_schema.sql backend/genealogy-backend/src/main/resources/db/migration/V1__create_current_schema.sql
+          cmp database/bootstrap/generated/V2__seed_system_authorization.sql backend/genealogy-backend/src/main/resources/db/migration/V2__seed_system_authorization.sql
+      - name: Upload verification evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: fresh-database-baseline
           path: database/bootstrap/generated/
           retention-days: 7
-      - name: Commit verified SQL baseline to working branch
-        if: github.event_name == 'push' && github.ref == 'refs/heads/chore/fresh-database-baseline-20261012'
-        run: |
-          mkdir -p backend/genealogy-backend/src/main/resources/db/baseline
-          cp database/bootstrap/generated/V1__create_current_schema.sql backend/genealogy-backend/src/main/resources/db/baseline/V1__create_current_schema.sql
-          cp database/bootstrap/generated/V2__seed_system_authorization.sql backend/genealogy-backend/src/main/resources/db/baseline/V2__seed_system_authorization.sql
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add backend/genealogy-backend/src/main/resources/db/baseline/
-          if ! git diff --cached --quiet; then
-            git commit -m 'chore(db): snapshot verified fresh-install schema and RBAC'
-            git push origin HEAD:chore/fresh-database-baseline-20261012
-          fi
