@@ -10,6 +10,10 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class AuthProperties {
 
     private boolean publicRegistrationEnabled = false;
+    private boolean bootstrapAdminEnabled = false;
+    private String bootstrapAdminUsername;
+    private String bootstrapAdminPassword;
+    private String bootstrapAdminDisplayName = "Initial Administrator";
     private boolean demoModeEnabled = false;
     private boolean exposeBearerToken = false;
     private boolean exposeResetToken = false;
