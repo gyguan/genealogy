@@ -46,6 +46,10 @@ if [ "$ok" -ne 1 ]; then
   echo "Application/Flyway did not finish successfully; see $OUT/application-startup.log" >&2
   exit 1
 fi
+# Remove objects that only existed to bridge historical migrations and are not used by current entities/mappers.
+docker exec "$cid" psql -U genealogy -d genealogy_baseline -v ON_ERROR_STOP=1 -c \
+  'DROP TABLE IF EXISTS member_role_scope_migration_2026071301, clan_member_legacy, role;' \
+  >>"$OUT/verify.log"
 # pg_dump reconstructs final CREATE TABLE / constraints / indexes, NOT historical ALTER chains.
 docker exec "$cid" pg_dump -U genealogy -d genealogy_baseline \
   --schema-only --no-owner --no-privileges --exclude-table=flyway_schema_history \
