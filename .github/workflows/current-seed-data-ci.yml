@@ -6,6 +6,9 @@ on:
     paths:
       - "backend/genealogy-backend/src/main/resources/db/seed/current/**"
       - "backend/genealogy-backend/src/main/resources/db/migration/**"
+      - "backend/genealogy-backend/src/main/resources/application*.yml"
+      - "backend/genealogy-backend/src/main/java/com/genealogy/config/LocalTestDataAutoInitializer.java"
+      - "backend/genealogy-backend/src/test/java/com/genealogy/config/LocalTestDataAutoInitializerTest.java"
       - "backend/genealogy-backend/src/test/java/com/genealogy/database/CurrentSeedDataContractTest.java"
       - ".github/workflows/current-seed-data-ci.yml"
   push:
@@ -13,6 +16,9 @@ on:
     paths:
       - "backend/genealogy-backend/src/main/resources/db/seed/current/**"
       - "backend/genealogy-backend/src/main/resources/db/migration/**"
+      - "backend/genealogy-backend/src/main/resources/application*.yml"
+      - "backend/genealogy-backend/src/main/java/com/genealogy/config/LocalTestDataAutoInitializer.java"
+      - "backend/genealogy-backend/src/test/java/com/genealogy/config/LocalTestDataAutoInitializerTest.java"
       - "backend/genealogy-backend/src/test/java/com/genealogy/database/CurrentSeedDataContractTest.java"
       - ".github/workflows/current-seed-data-ci.yml"
   workflow_dispatch:
@@ -69,30 +75,42 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y postgresql-client
 
-      - name: Run seed contract test
+      - name: Run seed contract and auto-init tests
         working-directory: backend/genealogy-backend
-        run: mvn -B -q -Dtest=CurrentSeedDataContractTest test
+        run: mvn -B -q -Dtest=CurrentSeedDataContractTest,LocalTestDataAutoInitializerTest test
 
-      - name: Apply all Flyway migrations through application startup
+      - name: Apply Flyway and verify automatic local scenario seed
         working-directory: backend/genealogy-backend
+        env:
+          CI: "false"
+          GENEALOGY_SEED_AUTO_ENABLED: "true"
         run: |
           mvn -B -q -DskipTests package
           java -jar target/genealogy-backend-0.1.0-SNAPSHOT.jar >/tmp/current-seed-backend.log 2>&1 &
           backend_pid=$!
           ready=false
+          seeded=false
           for i in $(seq 1 60); do
             if curl -fsS http://127.0.0.1:8080/api/v1/health >/dev/null; then
               ready=true
+            fi
+            scenario_count=$(psql "${DATABASE_URL}" -X -tA -c "select count(*) from clan where clan_code like 'SCENARIO-%';" 2>/dev/null || echo 0)
+            if [ "${scenario_count}" = "2" ]; then
+              seeded=true
+            fi
+            if [ "${ready}" = "true" ] && [ "${seeded}" = "true" ]; then
               break
             fi
             sleep 2
           done
           kill "${backend_pid}" || true
           wait "${backend_pid}" || true
-          if [ "${ready}" != "true" ]; then
+          if [ "${ready}" != "true" ] || [ "${seeded}" != "true" ]; then
             tail -n 300 /tmp/current-seed-backend.log || true
+            echo "ready=${ready} seeded=${seeded}"
             exit 1
           fi
+          grep -q "event=local_test_seed_initialized" /tmp/current-seed-backend.log
 
       - name: Reset and seed deterministic scenarios
         run: |
