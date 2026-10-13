@@ -113,7 +113,7 @@
                         .contains("is_featured_on_home boolean default false not null")
                         .contains("create index idx_culture_item_featured_home")
                         .contains("create index idx_culture_site_featured_home")
-                        .doesNotContain("featured_on_home boolean");
+                        .doesNotContain("\n    featured_on_home boolean");
                 assertThat(scenario).contains("is_featured_on_home");
                 assertThat(performance).contains("is_featured_on_home");
                 assertThat(itemEntity).contains("@TableField(\"is_featured_on_home\")");
