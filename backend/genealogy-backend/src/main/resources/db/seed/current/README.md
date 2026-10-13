@@ -39,7 +39,7 @@ $env:GENEALOGY_SEED_AUTO_ENABLED="false"
 在仓库根目录直接执行：
 
 ```powershell
-$env:PGPASSWORD="123456"; psql -h localhost -p 5432 -U genealogy -d genealogy -f .\backend\genealogy-backend\src\main\resources\db\seed\current\init-local-test-data.sql
+$env:PGPASSWORD="123456"; psql -h localhost -p 5432 -U genealogy -d genealogy -v environment=local -v confirm_reset=RESET_CURRENT_GENEALOGY_DATA -f .\backend\genealogy-backend\src\main\resources\db\seed\current\init-local-test-data.sql
 ```
 
 这份入口 SQL 会依次调用：
@@ -57,10 +57,10 @@ $env:PGPASSWORD="123456"; psql -h localhost -p 5432 -U genealogy -d genealogy -f
 Windows / PowerShell 也可以执行：
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\backend\genealogy-backend\src\main\resources\db\seed\current\init-local-test-data.ps1
+powershell -ExecutionPolicy Bypass -File .\backend\genealogy-backend\src\main\resources\db\seed\current\init-local-test-data.ps1 -ConfirmReset
 ```
 
-脚本默认连接：`localhost:5432/genealogy`，数据库用户 `genealogy`，密码 `123456`，依次执行“安全清理 → 全场景 Seed → 完整性校验”。如 PostgreSQL 连接参数不同，可通过脚本参数覆盖。
+脚本默认连接：`localhost:5432/genealogy`，数据库用户 `genealogy`，密码 `123456`，依次执行“安全清理 → 全场景 Seed → 完整性校验”。手工清理必须显式确认：PowerShell 传 `-ConfirmReset`，SQL/psql 传 `environment` 和 `confirm_reset`。
 
 初始化后的 5 个演示账号统一使用测试密码 `Genealogy@123`：
 
