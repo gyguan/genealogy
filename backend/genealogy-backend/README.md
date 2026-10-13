@@ -42,7 +42,7 @@ Maven
 URL      jdbc:postgresql://localhost:5432/genealogy
 Database genealogy
 Username genealogy
-Password genealogy_local_only
+Password 123456
 ```
 
 使用项目 Docker PostgreSQL 16：
