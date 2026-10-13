@@ -45,8 +45,9 @@
                 String sql = read("init-local-test-data.sql");
 
                 assertThat(sql)
-                        .contains("\\set environment local")
-                        .contains("\\set confirm_reset RESET_CURRENT_GENEALOGY_DATA")
+                        .doesNotContain("\\set environment local")
+                        .doesNotContain("\\set confirm_reset RESET_CURRENT_GENEALOGY_DATA")
+                        .contains("confirm_reset=RESET_CURRENT_GENEALOGY_DATA")
                         .contains("\\ir 00_reset_business_data.sql")
                         .contains("\\ir 10_seed_current_scenarios.sql")
                         .contains("\\ir 30_verify_seed_data.sql")
