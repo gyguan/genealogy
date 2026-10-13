@@ -1067,190 +1067,6 @@ ALTER SEQUENCE public.clan_id_seq OWNED BY public.clan.id;
 
 
 --
--- Name: clan_member_legacy; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.clan_member_legacy (
-    id bigint NOT NULL,
-    clan_id bigint NOT NULL,
-    user_id bigint NOT NULL,
-    person_id bigint,
-    branch_id bigint,
-    role_id bigint NOT NULL,
-    member_name character varying(100),
-    join_status character varying(32) DEFAULT 'invited'::character varying NOT NULL,
-    invited_by bigint,
-    member_status character varying(32) DEFAULT 'active'::character varying NOT NULL,
-    scope_type character varying(32) DEFAULT 'clan'::character varying NOT NULL,
-    scope_id bigint,
-    joined_at timestamp without time zone,
-    created_at timestamp without time zone DEFAULT now() NOT NULL,
-    updated_at timestamp without time zone DEFAULT now() NOT NULL
-);
-
-
---
--- Name: TABLE clan_member_legacy; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.clan_member_legacy IS '旧版宗族成员/角色混合表，仅用于历史数据兼容；新写入请使用 clan_membership 与 member_role。';
-
-
---
--- Name: COLUMN clan_member_legacy.id; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.clan_member_legacy.id IS '宗族成员主键ID';
-
-
---
--- Name: COLUMN clan_member_legacy.clan_id; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.clan_member_legacy.clan_id IS '所属宗族ID';
-
-
---
--- Name: COLUMN clan_member_legacy.user_id; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.clan_member_legacy.user_id IS '关联用户ID';
-
-
---
--- Name: COLUMN clan_member_legacy.person_id; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.clan_member_legacy.person_id IS '关联族谱人物ID';
-
-
---
--- Name: COLUMN clan_member_legacy.branch_id; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.clan_member_legacy.branch_id IS '所属或管理支派ID';
-
-
---
--- Name: COLUMN clan_member_legacy.role_id; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.clan_member_legacy.role_id IS '角色ID';
-
-
---
--- Name: COLUMN clan_member_legacy.member_name; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.clan_member_legacy.member_name IS '成员显示名称';
-
-
---
--- Name: COLUMN clan_member_legacy.join_status; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.clan_member_legacy.join_status IS '加入状态，例如invited、joined、rejected';
-
-
---
--- Name: COLUMN clan_member_legacy.invited_by; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.clan_member_legacy.invited_by IS '邀请人用户ID';
-
-
---
--- Name: COLUMN clan_member_legacy.member_status; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.clan_member_legacy.member_status IS '成员状态，例如active、inactive、removed';
-
-
---
--- Name: COLUMN clan_member_legacy.scope_type; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.clan_member_legacy.scope_type IS '授权范围类型，例如clan、branch';
-
-
---
--- Name: COLUMN clan_member_legacy.scope_id; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.clan_member_legacy.scope_id IS '授权范围对象ID';
-
-
---
--- Name: COLUMN clan_member_legacy.joined_at; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.clan_member_legacy.joined_at IS '加入时间';
-
-
---
--- Name: COLUMN clan_member_legacy.created_at; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.clan_member_legacy.created_at IS '创建时间';
-
-
---
--- Name: COLUMN clan_member_legacy.updated_at; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.clan_member_legacy.updated_at IS '更新时间';
-
-
---
--- Name: clan_member; Type: VIEW; Schema: public; Owner: -
---
-
-CREATE VIEW public.clan_member AS
- SELECT id,
-    clan_id,
-    user_id,
-    person_id,
-    branch_id,
-    role_id,
-    member_name,
-    join_status,
-    invited_by,
-    member_status,
-    scope_type,
-    scope_id,
-    joined_at,
-    created_at,
-    updated_at
-   FROM public.clan_member_legacy;
-
-
---
--- Name: VIEW clan_member; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON VIEW public.clan_member IS '旧版 clan_member 只读兼容视图；业务主链路已切换至 clan_membership 与 member_role。';
-
-
---
--- Name: clan_member_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.clan_member_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: clan_member_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.clan_member_id_seq OWNED BY public.clan_member_legacy.id;
-
-
---
 -- Name: clan_membership; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -2189,19 +2005,6 @@ CREATE SEQUENCE public.member_role_id_seq
 --
 
 ALTER SEQUENCE public.member_role_id_seq OWNED BY public.member_role.id;
-
-
---
--- Name: member_role_scope_migration_2026071301; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.member_role_scope_migration_2026071301 (
-    member_role_id bigint NOT NULL,
-    previous_scope_type character varying(32) NOT NULL,
-    target_scope_type character varying(32) NOT NULL,
-    migration_reason character varying(128) NOT NULL,
-    migrated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
-);
 
 
 --
@@ -3375,37 +3178,6 @@ ALTER SEQUENCE public.revision_id_seq OWNED BY public.revision.id;
 
 
 --
--- Name: role; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.role (
-    id bigint NOT NULL,
-    role_code character varying(64),
-    role_name character varying(100),
-    description character varying(255)
-);
-
-
---
--- Name: role_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.role_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: role_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.role_id_seq OWNED BY public.role.id;
-
-
---
 -- Name: source; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -3963,13 +3735,6 @@ ALTER TABLE ONLY public.clan ALTER COLUMN id SET DEFAULT nextval('public.clan_id
 
 
 --
--- Name: clan_member_legacy id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.clan_member_legacy ALTER COLUMN id SET DEFAULT nextval('public.clan_member_id_seq'::regclass);
-
-
---
 -- Name: clan_membership id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -4093,13 +3858,6 @@ ALTER TABLE ONLY public.review_task ALTER COLUMN id SET DEFAULT nextval('public.
 --
 
 ALTER TABLE ONLY public.revision ALTER COLUMN id SET DEFAULT nextval('public.revision_id_seq'::regclass);
-
-
---
--- Name: role id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.role ALTER COLUMN id SET DEFAULT nextval('public.role_id_seq'::regclass);
 
 
 --
@@ -4266,22 +4024,6 @@ ALTER TABLE ONLY public.clan
 
 
 --
--- Name: clan_member_legacy clan_member_clan_id_user_id_role_id_scope_type_scope_id_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.clan_member_legacy
-    ADD CONSTRAINT clan_member_clan_id_user_id_role_id_scope_type_scope_id_key UNIQUE (clan_id, user_id, role_id, scope_type, scope_id);
-
-
---
--- Name: clan_member_legacy clan_member_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.clan_member_legacy
-    ADD CONSTRAINT clan_member_pkey PRIMARY KEY (id);
-
-
---
 -- Name: clan_membership clan_membership_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4386,14 +4128,6 @@ ALTER TABLE ONLY public.member_role
 
 
 --
--- Name: member_role_scope_migration_2026071301 member_role_scope_migration_2026071301_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.member_role_scope_migration_2026071301
-    ADD CONSTRAINT member_role_scope_migration_2026071301_pkey PRIMARY KEY (member_role_id);
-
-
---
 -- Name: operation_log operation_log_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4479,14 +4213,6 @@ ALTER TABLE ONLY public.review_task
 
 ALTER TABLE ONLY public.revision
     ADD CONSTRAINT revision_pkey PRIMARY KEY (id);
-
-
---
--- Name: role role_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.role
-    ADD CONSTRAINT role_pkey PRIMARY KEY (id);
 
 
 --
@@ -5348,13 +5074,6 @@ CREATE INDEX idx_revision_source_binding_pending ON public.revision USING btree 
 
 
 --
--- Name: idx_role_code; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_role_code ON public.role USING btree (role_code);
-
-
---
 -- Name: idx_source_attachment_source; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -5648,54 +5367,6 @@ ALTER TABLE ONLY public.branch
 
 ALTER TABLE ONLY public.clan
     ADD CONSTRAINT clan_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.app_user(id);
-
-
---
--- Name: clan_member_legacy clan_member_branch_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.clan_member_legacy
-    ADD CONSTRAINT clan_member_branch_id_fkey FOREIGN KEY (branch_id) REFERENCES public.branch(id);
-
-
---
--- Name: clan_member_legacy clan_member_clan_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.clan_member_legacy
-    ADD CONSTRAINT clan_member_clan_id_fkey FOREIGN KEY (clan_id) REFERENCES public.clan(id);
-
-
---
--- Name: clan_member_legacy clan_member_invited_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.clan_member_legacy
-    ADD CONSTRAINT clan_member_invited_by_fkey FOREIGN KEY (invited_by) REFERENCES public.app_user(id);
-
-
---
--- Name: clan_member_legacy clan_member_person_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.clan_member_legacy
-    ADD CONSTRAINT clan_member_person_id_fkey FOREIGN KEY (person_id) REFERENCES public.person(id);
-
-
---
--- Name: clan_member_legacy clan_member_role_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.clan_member_legacy
-    ADD CONSTRAINT clan_member_role_id_fkey FOREIGN KEY (role_id) REFERENCES public.app_role(id);
-
-
---
--- Name: clan_member_legacy clan_member_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.clan_member_legacy
-    ADD CONSTRAINT clan_member_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.app_user(id);
 
 
 --
