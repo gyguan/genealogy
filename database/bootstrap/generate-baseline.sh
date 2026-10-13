@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Generate a fresh-install PostgreSQL baseline from the ACTUAL migrated schema.
-# Does not modify the checked-in Flyway history or any existing database.
+# Rebuild the fresh-install PostgreSQL baseline from the archived pre-reset Flyway chain.
+# Verification/provenance tool only: it never touches an existing user database.
 set -Eeuo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 BACKEND="$ROOT/backend/genealogy-backend"
@@ -25,11 +25,11 @@ for i in $(seq 1 60); do
   sleep 1
 done
 docker exec "$cid" pg_isready -U genealogy -d genealogy_baseline >/dev/null
-# Flyway runs via the real application, exercising exactly the checked-in migrations.
+# Rebuild the historical final state from the archived legacy chain.
 (cd "$BACKEND" && DB_URL="jdbc:postgresql://localhost:$port/genealogy_baseline" \
   DB_USERNAME=genealogy DB_PASSWORD=local_baseline_only SERVER_PORT=0 \
   GENEALOGY_AUTH_DEMO_MODE_ENABLED=false \
-  mvn -q -DskipTests spring-boot:run -Dspring-boot.run.profiles=local -Dspring-boot.run.arguments=--spring.flyway.locations=classpath:db/migration \
+  mvn -q -DskipTests spring-boot:run -Dspring-boot.run.profiles=local "-Dspring-boot.run.arguments=--spring.flyway.locations=filesystem:$ROOT/database/archive/legacy-flyway" \
   >"$OUT/application-startup.log" 2>&1) &
 app_pid=$!
 ok=0
@@ -96,4 +96,4 @@ docker exec "$cid" psql -U genealogy -d genealogy_baseline_runtime -Atc \
   "select 'migrations=' || count(*) from flyway_schema_history where success;" \
   >>"$OUT/verify.log"
 echo "Generated schema and RBAC seed: $OUT"
-echo "IMPORTANT: Generated output is NOT activated until reviewed and committed to db/migration."
+echo "Compare generated V1/V2 with the checked-in db/migration baseline before accepting changes."
