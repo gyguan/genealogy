@@ -137,12 +137,18 @@ def parse_mapper_tables(schema: dict[str, dict[str, str]]) -> list[str]:
                 re.IGNORECASE,
             )
         )
+        scan_text = re.sub(
+            r"\\bFOR\\s+UPDATE(?:\\s+SKIP\\s+LOCKED)?\\b",
+            "",
+            text,
+            flags=re.IGNORECASE,
+        )
         refs = [
             m.group(1).lower()
             for m in re.finditer(
                 r"\b(?:FROM|JOIN|UPDATE|INSERT\s+INTO|DELETE\s+FROM)\s+"
                 r"(?:public\.)?([A-Za-z_][A-Za-z0-9_]*)",
-                text,
+                scan_text,
                 re.IGNORECASE,
             )
         ]
