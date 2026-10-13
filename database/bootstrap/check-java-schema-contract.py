@@ -261,28 +261,30 @@ def parse_seed_codes(v2_sql: str) -> tuple[set[str], set[str], set[str]]:
     return set(permission_by_id.values()), set(role_by_id.values()), granted_permissions
 
 def extract_check_values(v1_sql: str, constraint: str) -> set[str]:
-    match = re.search(
-        rf"CONSTRAINT {re.escape(constraint)} CHECK \\(\\(.*?ARRAY\\[(.*?)\\].*?\\)\\)",
-        v1_sql,
-        re.DOTALL,
-    )
-    if not match:
+    marker = f"CONSTRAINT {constraint} CHECK"
+    start = v1_sql.find(marker)
+    if start < 0:
         return set()
-    return set(re.findall(r"'([^']+)'::character varying", match.group(1)))
+    end = v1_sql.find("\n", start)
+    clause = v1_sql[start:] if end < 0 else v1_sql[start:end]
+    return set(re.findall(r"'([^']+)'::character varying", clause))
 
 
 def enum_names(path: pathlib.Path, lower: bool = False) -> set[str]:
     text = path.read_text(encoding="utf-8")
     body = text.split("{", 1)[1].split(";", 1)[0]
-    names = set(re.findall(r"^\\s*([A-Z][A-Z0-9_]*)\\s*(?:\\(|,|$)", body, re.MULTILINE))
+    names = set(
+        re.findall(r"^\s*([A-Z][A-Z0-9_]*)\s*(?:\(|,|$)", body, re.MULTILINE)
+    )
     return {name.lower() for name in names} if lower else names
 
 
 def enum_string_values(path: pathlib.Path) -> set[str]:
     text = path.read_text(encoding="utf-8")
     body = text.split("{", 1)[1].split(";", 1)[0]
-    return set(re.findall(r"^[ \\t]*[A-Z][A-Z0-9_]*\\(\\s*\"([^\"]+)\"", body, re.MULTILINE))
-
+    return set(
+        re.findall(r'^\s*[A-Z][A-Z0-9_]*\(\s*"([^"]+)"', body, re.MULTILINE)
+    )
 
 def check_java_value_domains(v1_sql: str) -> list[str]:
     errors: list[str] = []
