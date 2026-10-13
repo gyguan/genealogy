@@ -300,6 +300,7 @@ export function DataTable<T extends Record<string, any>>({
   return (
     <div className={`table-wrap antd-table-wrap${reviewRowSelection ? ' batch-review-table-wrap' : ''}`}>
       {selectableRowHandler ? <Typography.Text className="table-hint" type="secondary">点击列表行可查看详情或执行后续操作</Typography.Text> : null}
+      <Typography.Text className="table-mobile-scroll-hint" type="secondary">左右滑动可查看完整表格内容</Typography.Text>
       {targetType && reviewableRows.length ? (
         <div className="batch-review-actions table-review-actions">
           <Typography.Text type="secondary">仅草稿/已驳回对象可勾选提交审批。</Typography.Text>
