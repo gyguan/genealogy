@@ -196,27 +196,35 @@ def parse_mapper_tables(schema: dict[str, dict[str, str]]) -> list[str]:
     return errors
 
 
-def parse_seed_codes(v2_sql: str) -> tuple[set[str], set[str]]:
-    permissions = set(
-        m.group(1)
+def parse_seed_codes(v2_sql: str) -> tuple[set[str], set[str], set[str]]:
+    permission_by_id = {
+        m.group(1): m.group(2)
         for m in re.finditer(
-            r"INSERT INTO public\.app_permission .*?VALUES \(\d+, '([^']+)'",
+            r"INSERT INTO public\.app_permission .*?VALUES \((\d+), '([^']+)'",
             v2_sql,
         )
-    )
-    roles = set(
-        m.group(1)
+    }
+    role_by_id = {
+        m.group(1): m.group(2)
         for m in re.finditer(
-            r"INSERT INTO public\.app_role .*?VALUES \(\d+, '([^']+)'",
+            r"INSERT INTO public\.app_role .*?VALUES \((\d+), '([^']+)'",
             v2_sql,
         )
-    )
-    return permissions, roles
-
+    }
+    granted_permissions: set[str] = set()
+    for match in re.finditer(
+        r"INSERT INTO public\.app_role_permission .*?VALUES "
+        r"\(\d+, (\d+), (\d+), '[^']*', 'allow', 'active'",
+        v2_sql,
+    ):
+        permission = permission_by_id.get(match.group(2))
+        if permission:
+            granted_permissions.add(permission)
+    return set(permission_by_id.values()), set(role_by_id.values()), granted_permissions
 
 def check_java_permission_contract(v2_sql: str) -> list[str]:
     errors: list[str] = []
-    permissions, roles = parse_seed_codes(v2_sql)
+    permissions, roles, granted_permissions = parse_seed_codes(v2_sql)
     resources = {code.split(".", 1)[0] for code in permissions if "." in code}
     actions = {code.split(".", 1)[1] for code in permissions if "." in code}
 
@@ -238,6 +246,13 @@ def check_java_permission_contract(v2_sql: str) -> list[str]:
         errors.append(
             "Java permission literals missing from V2 app_permission: "
             + ", ".join(missing_permissions)
+        )
+
+    ungranted_permissions = sorted(candidates & permissions - granted_permissions)
+    if ungranted_permissions:
+        errors.append(
+            "Java-used permissions have no active allow grant in V2: "
+            + ", ".join(ungranted_permissions)
         )
 
     role_constants = set(
@@ -272,9 +287,14 @@ def check_java_permission_contract(v2_sql: str) -> list[str]:
     ):
         if action in action_map:
             code = f"{method_resource[method]}.{action_map[action]}"
+            candidates.add(code)
             if code not in permissions:
                 errors.append(
                     f"UnifiedAccessDecisionService caller requires missing V2 permission {code}"
+                )
+            elif code not in granted_permissions:
+                errors.append(
+                    f"UnifiedAccessDecisionService caller uses ungranted V2 permission {code}"
                 )
 
     return errors
@@ -291,7 +311,7 @@ def main() -> int:
     errors.extend(parse_mapper_tables(schema))
     errors.extend(check_java_permission_contract(v2_sql))
 
-    permissions, roles = parse_seed_codes(v2_sql)
+    permissions, roles, _ = parse_seed_codes(v2_sql)
     print(
         f"Java/schema contract summary: tables={len(schema)}, "
         f"mapped_tables={len(mapped_tables)}, permissions={len(permissions)}, roles={len(roles)}"
