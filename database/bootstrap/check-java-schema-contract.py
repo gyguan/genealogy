@@ -260,6 +260,91 @@ def parse_seed_codes(v2_sql: str) -> tuple[set[str], set[str], set[str]]:
             granted_permissions.add(permission)
     return set(permission_by_id.values()), set(role_by_id.values()), granted_permissions
 
+def extract_check_values(v1_sql: str, constraint: str) -> set[str]:
+    match = re.search(
+        rf"CONSTRAINT {re.escape(constraint)} CHECK \\(\\(.*?ARRAY\\[(.*?)\\].*?\\)\\)",
+        v1_sql,
+        re.DOTALL,
+    )
+    if not match:
+        return set()
+    return set(re.findall(r"'([^']+)'::character varying", match.group(1)))
+
+
+def enum_names(path: pathlib.Path, lower: bool = False) -> set[str]:
+    text = path.read_text(encoding="utf-8")
+    body = text.split("{", 1)[1].split(";", 1)[0]
+    names = set(re.findall(r"^\\s*([A-Z][A-Z0-9_]*)\\s*(?:\\(|,|$)", body, re.MULTILINE))
+    return {name.lower() for name in names} if lower else names
+
+
+def enum_string_values(path: pathlib.Path) -> set[str]:
+    text = path.read_text(encoding="utf-8")
+    body = text.split("{", 1)[1].split(";", 1)[0]
+    return set(re.findall(r"^[ \\t]*[A-Z][A-Z0-9_]*\\(\\s*\"([^\"]+)\"", body, re.MULTILINE))
+
+
+def check_java_value_domains(v1_sql: str) -> list[str]:
+    errors: list[str] = []
+    contracts: list[tuple[str, set[str]]] = [
+        (
+            "chk_import_job_execution_status",
+            enum_names(JAVA_ROOT / "com/genealogy/imports/domain/ImportExecutionState.java", lower=True),
+        ),
+        (
+            "ck_review_quality_scope_type",
+            enum_names(JAVA_ROOT / "com/genealogy/quality/check/QualityCheckScopeType.java") | {"TASK_IDS"},
+        ),
+        (
+            "ck_review_quality_status",
+            enum_names(JAVA_ROOT / "com/genealogy/review/domain/ReviewQualityCheckStatus.java"),
+        ),
+        (
+            "ck_review_quality_mode",
+            enum_names(JAVA_ROOT / "com/genealogy/review/domain/ReviewQualityCheckMode.java"),
+        ),
+        (
+            "ck_culture_item__category",
+            enum_string_values(JAVA_ROOT / "com/genealogy/culture/domain/CultureCategory.java"),
+        ),
+        (
+            "ck_culture_item__confidence",
+            enum_string_values(JAVA_ROOT / "com/genealogy/culture/domain/CultureConfidenceLevel.java"),
+        ),
+        (
+            "ck_culture_item__privacy",
+            enum_string_values(JAVA_ROOT / "com/genealogy/culture/domain/CulturePrivacyLevel.java"),
+        ),
+        (
+            "ck_culture_item__sensitive",
+            enum_string_values(JAVA_ROOT / "com/genealogy/culture/domain/CultureSensitiveLevel.java"),
+        ),
+        (
+            "ck_culture_site__type",
+            enum_string_values(JAVA_ROOT / "com/genealogy/culture/domain/CultureSiteType.java"),
+        ),
+        (
+            "chk_source_binding_target_type",
+            enum_string_values(JAVA_ROOT / "com/genealogy/source/domain/SourceBindingTargetType.java"),
+        ),
+        (
+            "ck_relationship_relation_category",
+            enum_string_values(JAVA_ROOT / "com/genealogy/tree/query/RelationCategory.java"),
+        ),
+    ]
+    for constraint, expected in contracts:
+        actual = extract_check_values(v1_sql, constraint)
+        if not actual:
+            errors.append(f"V1 constraint not found or unreadable: {constraint}")
+            continue
+        missing = sorted(expected - actual)
+        if missing:
+            errors.append(
+                f"{constraint} rejects Java-supported values: " + ", ".join(missing)
+            )
+    return errors
+
+
 def check_java_permission_contract(v2_sql: str) -> list[str]:
     errors: list[str] = []
     permissions, roles, granted_permissions = parse_seed_codes(v2_sql)
@@ -348,6 +433,7 @@ def main() -> int:
     entity_errors, mapped_tables, mapped_columns = parse_entities(schema, v1_sql)
     errors.extend(entity_errors)
     errors.extend(parse_mapper_tables(schema))
+    errors.extend(check_java_value_domains(v1_sql))
     errors.extend(check_java_permission_contract(v2_sql))
 
     mapper_text = "\n".join(
