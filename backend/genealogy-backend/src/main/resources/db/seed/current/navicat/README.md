@@ -2,6 +2,10 @@
 
 本目录提供纯 PostgreSQL SQL 版本，不包含 `\set`、`\if`、`\echo` 或 `psql -v` 变量，可在 Navicat 的 PostgreSQL 连接中直接执行。
 
+## 演示账号
+
+执行当前场景脚本后，可使用 `demo_admin`、`demo_branch_admin`、`demo_editor`、`demo_reviewer`、`demo_viewer` 登录，统一测试密码为 `Genealogy@123`。
+
 ## 执行方式
 
 1. 确认应用已经启动过一次，全部 Flyway 迁移已经完成。

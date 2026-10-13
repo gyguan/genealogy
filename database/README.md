@@ -10,6 +10,7 @@ backend/genealogy-backend/src/main/resources/db/
 │   ├── V1__create_current_schema.sql
 │   └── V2__seed_system_authorization.sql
 └── seed/                      # 显式测试/演示/性能数据，不由 Flyway 自动执行
+    └── current/                # 当前模型唯一受支持的测试数据工厂与本地一键初始化
 
 database/
 ├── bootstrap/                 # 基线重现与校验工具
@@ -32,3 +33,7 @@ database/
 详细规范：`docs/backend/database-and-flyway.md`。
 
 基线重现与验证：`database/bootstrap/README.md`。
+
+## 当前测试数据入口
+
+本地、开发、测试环境统一使用 `backend/genealogy-backend/src/main/resources/db/seed/current/`。Windows 开发机推荐执行该目录下的 `init-local-test-data.ps1`，不要使用历史 Demo seed 文件作为当前模型初始化入口。

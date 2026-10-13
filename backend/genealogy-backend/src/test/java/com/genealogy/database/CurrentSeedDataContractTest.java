@@ -1,11 +1,16 @@
 
         package com.genealogy.database;
 
+        import com.genealogy.auth.security.PasswordHashUtil;
         import org.junit.jupiter.api.Test;
 
         import java.io.IOException;
         import java.nio.file.Files;
         import java.nio.file.Path;
+        import java.nio.charset.StandardCharsets;
+        import java.util.HexFormat;
+        import java.util.regex.Matcher;
+        import java.util.regex.Pattern;
 
         import static org.assertj.core.api.Assertions.assertThat;
 
@@ -33,6 +38,27 @@
                         .doesNotContain("truncate table app_role")
                         .doesNotContain("truncate table app_permission")
                         .doesNotContain("delete from app_auth_security_event");
+            }
+
+            @Test
+            void documentedDemoPasswordMatchesAllSeedAccountHashes() throws IOException {
+                String sql = read("10_seed_current_scenarios.sql");
+                Pattern pattern = Pattern.compile("\\('demo_[^']+'.*?decode\\('([0-9a-f]+)', 'hex'\\)");
+                Matcher matcher = pattern.matcher(sql);
+                int matched = 0;
+                while (matcher.find()) {
+                    String storedHash = new String(HexFormat.of().parseHex(matcher.group(1)), StandardCharsets.UTF_8);
+                    assertThat(PasswordHashUtil.verify("Genealogy@123", storedHash)).isTrue();
+                    matched++;
+                }
+                assertThat(matched).isEqualTo(5);
+                assertThat(read("README.md"))
+                        .contains("Genealogy@123")
+                        .contains("demo_admin")
+                        .contains("demo_branch_admin")
+                        .contains("demo_editor")
+                        .contains("demo_reviewer")
+                        .contains("demo_viewer");
             }
 
             @Test
