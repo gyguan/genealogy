@@ -11,7 +11,16 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class ProductionProfileStartupTest {
 
     @Test
-    void shouldFailApplicationStartupWithExplicitMissingSecretMessage() {
+    void shouldFailProdProfileStartupWithExplicitMissingSecretMessage() {
+        assertMissingSecrets("prod");
+    }
+
+    @Test
+    void shouldFailProductionAliasStartupWithExplicitMissingSecretMessage() {
+        assertMissingSecrets("production");
+    }
+
+    private void assertMissingSecrets(String profile) {
         String previousUrl = System.getProperty("DB_URL");
         String previousUsername = System.getProperty("DB_USERNAME");
         String previousPassword = System.getProperty("DB_PASSWORD");
@@ -22,7 +31,7 @@ class ProductionProfileStartupTest {
 
             SpringApplication application = GenealogyApplication.createApplication();
             application.setWebApplicationType(WebApplicationType.NONE);
-            application.setAdditionalProfiles("prod");
+            application.setAdditionalProfiles(profile);
 
             RuntimeException error = assertThrows(RuntimeException.class, application::run);
             String messages = collectMessages(error);

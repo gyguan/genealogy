@@ -18,7 +18,7 @@ public final class ProductionEnvironmentValidator {
 
     public void validate(ConfigurableEnvironment environment) {
         boolean production = Arrays.stream(environment.getActiveProfiles())
-                .anyMatch("prod"::equalsIgnoreCase);
+                .anyMatch(profile -> "prod".equalsIgnoreCase(profile) || "production".equalsIgnoreCase(profile));
         if (!production) {
             return;
         }

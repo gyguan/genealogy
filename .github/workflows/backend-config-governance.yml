@@ -5,11 +5,12 @@ on:
     branches: ["main"]
     paths:
       - "backend/genealogy-backend/src/main/resources/application*.yml"
+      - "backend/genealogy-backend/config/application-local.example.yml"
       - "backend/genealogy-backend/src/main/resources/db/migration/**"
       - "backend/genealogy-backend/src/main/java/com/genealogy/config/**"
       - "backend/genealogy-backend/src/test/java/com/genealogy/config/**"
       - ".github/workflows/backend-config-governance.yml"
-      - "docs/backend-environment-configuration.md"
+      - "docs/backend/environment-configuration.md"
   push:
     branches: ["main"]
     paths:

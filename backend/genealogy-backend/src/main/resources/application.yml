@@ -53,7 +53,6 @@ management:
         genealogy.tree.query.duration: true
         genealogy.import.duration: true
 
-
 genealogy:
   attachment:
     storage-root: ${GENEALOGY_ATTACHMENT_STORAGE_ROOT:./data/attachments}
@@ -103,3 +102,14 @@ logging:
   level:
     root: INFO
     com.genealogy: INFO
+
+---
+spring:
+  config:
+    activate:
+      on-profile: "default | local"
+    import: optional:file:./config/application-local.yml
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/genealogy}
+    username: ${DB_USERNAME:genealogy}
+    password: ${DB_PASSWORD:genealogy_local_only}

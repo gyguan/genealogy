@@ -11,6 +11,9 @@ Thumbs.db
 *.log
 logs/
 
+# Local backend configuration
+backend/genealogy-backend/config/application-local.yml
+
 # Java
 target/
 build/

@@ -1,0 +1,19 @@
+# Copy this file to application-local.yml in the same directory.
+# application-local.yml is ignored by Git and is automatically imported by application.yml.
+# Values below are local-development only and match docker-compose.yml.
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/genealogy
+    username: genealogy
+    password: genealogy_local_only
+
+genealogy:
+  auth:
+    cookie-secure: false
+    expose-bearer-token: true
+    expose-reset-token: true
+
+logging:
+  level:
+    com.genealogy: DEBUG
