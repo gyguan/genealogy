@@ -41,6 +41,25 @@
             }
 
             @Test
+            void localInitSqlRunsResetSeedAndVerificationInOrder() throws IOException {
+                String sql = read("init-local-test-data.sql");
+
+                assertThat(sql)
+                        .contains("\\set environment local")
+                        .contains("\\set confirm_reset RESET_CURRENT_GENEALOGY_DATA")
+                        .contains("\\ir 00_reset_business_data.sql")
+                        .contains("\\ir 10_seed_current_scenarios.sql")
+                        .contains("\\ir 30_verify_seed_data.sql")
+                        .contains("Genealogy@123");
+
+                int reset = sql.indexOf("\\ir 00_reset_business_data.sql");
+                int seed = sql.indexOf("\\ir 10_seed_current_scenarios.sql");
+                int verify = sql.indexOf("\\ir 30_verify_seed_data.sql");
+                assertThat(reset).isLessThan(seed);
+                assertThat(seed).isLessThan(verify);
+            }
+
+            @Test
             void documentedDemoPasswordMatchesAllSeedAccountHashes() throws IOException {
                 String sql = read("10_seed_current_scenarios.sql");
                 Pattern pattern = Pattern.compile("\\('demo_[^']+'.*?decode\\('([0-9a-f]+)', 'hex'\\)");
