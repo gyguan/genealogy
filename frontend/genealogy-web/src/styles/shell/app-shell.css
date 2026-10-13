@@ -63,6 +63,31 @@
   box-shadow: var(--genealogy-box-shadow-tertiary);
 }
 
+
+[data-genealogy-app] .github-like-header-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+[data-genealogy-app] .github-like-header-context {
+  min-width: 0;
+}
+
+[data-genealogy-app] .mobile-nav-trigger {
+  display: none;
+  flex: 0 0 auto;
+}
+
+[data-genealogy-app] .mobile-nav-drawer .ant-drawer-header {
+  padding: 14px 16px;
+}
+
+[data-genealogy-app] .mobile-nav-drawer .ant-menu {
+  border-inline-end: 0;
+}
+
 [data-genealogy-app] .github-like-header-title {
   display: flex;
   align-items: baseline;
@@ -87,16 +112,46 @@
   background: var(--genealogy-color-bg-layout);
 }
 
+@media (max-width: 991px) {
+  [data-genealogy-app] .mobile-nav-trigger {
+    display: inline-flex;
+    width: 40px;
+    min-width: 40px;
+    height: 40px;
+    align-items: center;
+    justify-content: center;
+    margin-inline-start: -4px;
+    font-size: 18px;
+  }
+
+  [data-genealogy-app] .github-like-header {
+    gap: 8px;
+  }
+
+  [data-genealogy-app] .github-like-header-main {
+    flex: 1 1 auto;
+  }
+}
+
 @media (max-width: 760px) {
   [data-genealogy-app] .antd-content {
     padding: 12px;
   }
 
   [data-genealogy-app] .github-like-header {
-    padding: 0 12px;
+    padding-inline: max(12px, env(safe-area-inset-left)) max(12px, env(safe-area-inset-right));
+  }
+
+  [data-genealogy-app] .github-like-header-title .ant-typography:first-child,
+  [data-genealogy-app] .github-like-clan-tag {
+    display: none;
   }
 
   [data-genealogy-app] .github-like-header-title .ant-typography:last-child {
-    max-width: 180px;
+    max-width: min(48vw, 180px);
+  }
+
+  [data-genealogy-app] .mobile-nav-drawer .ant-drawer-body {
+    padding-bottom: max(12px, env(safe-area-inset-bottom)) !important;
   }
 }
